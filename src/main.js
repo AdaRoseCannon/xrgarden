@@ -13,6 +13,11 @@ import {
 } from './lib/controllers/gamepad.js';
 
 import {
+    water
+} from './lib/water.js';
+scene.add(water);
+
+import {
     Mesh,
     MeshBasicMaterial,
     PlaneGeometry,
@@ -90,3 +95,4 @@ gamepad.addEventListener('gamepadInteraction', function (event) {
 
 window.renderer = renderer;
 window.camera = camera;
+window.scene = scene;
