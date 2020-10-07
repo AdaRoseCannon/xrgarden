@@ -1,14 +1,13 @@
 // Original src: htt
 const BITS = 3;
-const TEXTURE_WIDTH = 32;
-const TEXTURE_HEIGHT = 32;
+const TEXTURE_WIDTH = 256;
+const TEXTURE_HEIGHT = 4;
 
 import {
 	DataTexture,
 	RGBFormat,
 	FloatType,
-	RepeatWrapping,
-	LinearFilter
+	RepeatWrapping
 } from 'three';
 
 /**
@@ -34,7 +33,6 @@ export function initSplineTexture(renderer) {
 
 	dataTexture.wrapS = RepeatWrapping;
 	dataTexture.wrapY = RepeatWrapping;
-	dataTexture.magFilter = LinearFilter;
 	dataTexture.needsUpdate = true;
 
 	return dataTexture;
@@ -43,8 +41,8 @@ export function initSplineTexture(renderer) {
 function setTextureValue(texture, index, x, y, z, o) {
 	const image = texture.image;
 	// eslint-disable-next-line no-unused-vars
-	const { data, width } = image;
-	const i = BITS * width * (o || 0);
+	const { data } = image;
+	const i = BITS * TEXTURE_WIDTH * (o || 0);
 	data[index * BITS + i + 0] = x;
 	data[index * BITS + i + 1] = y;
 	data[index * BITS + i + 2] = z;
@@ -86,7 +84,7 @@ export function updateSplineTexture(curve, texture, uniforms) {
 
 export function getUniforms(splineTexture) {
 	const uniforms = {
-		texture: { value: splineTexture },
+		spineTexture: { value: splineTexture },
 		pathOffset: { type: 'f', value: 0 }, // time of path curve
 		pathSegment: { type: 'f', value: 1 }, // fractional length of path
 		spineOffset: { type: 'f', value: 161 },
@@ -108,15 +106,14 @@ export function modifyShader( material, uniforms ) {
 		Object.assign(shader.uniforms, uniforms);
 
 		const vertexShader = `
-		uniform sampler2D texture;
-
+		uniform sampler2D spineTexture;
 		uniform float pathOffset;
 		uniform float pathSegment;
 		uniform float spineOffset;
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = ${TEXTURE_HEIGHT}.; // look up takes (i + 0.5) / textureLayers
+		float textureLayers = 4.; // look up takes (i + 0.5) / textureLayers
 
 		${shader.vertexShader}
 		`.replace(
@@ -129,10 +126,10 @@ export function modifyShader( material, uniforms ) {
 		float xWeight = bend ? 0. : 1.;
 		float mt = spinePortion * pathSegment + pathOffset;
 
-		vec3 spinePos = texture2D(texture, vec2(mt, (0.5) / textureLayers)).xyz;
-		vec3 a = texture2D(texture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
-		vec3 b = texture2D(texture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
-		vec3 c = texture2D(texture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
+		vec3 spinePos = texture(spineTexture, vec2(mt, (0.5) / textureLayers)).xyz;
+		vec3 a = texture(spineTexture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
+		vec3 b = texture(spineTexture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
+		vec3 c = texture(spineTexture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
 		mat3 basis = mat3(a, b, c);
 
 		vec3 transformed = basis
@@ -147,10 +144,10 @@ export function modifyShader( material, uniforms ) {
 	).replace(
 		'#include <project_vertex>',
 		`
-		vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
-		// vec4 mvPosition = viewMatrix * worldPos;
-		gl_Position = projectionMatrix * mvPosition;
-		`
+			vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
+			// vec4 mvPosition = viewMatrix * worldPos;
+			gl_Position = projectionMatrix * mvPosition;
+			`
 	)
 
 		shader.vertexShader = vertexShader

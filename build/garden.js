@@ -58046,7 +58046,8 @@ const sceneRadius = 500;
 const cameraGroup = new Group();
 
 const canvas = document.querySelector('canvas');
-const renderer = new WebGLRenderer({ canvas: canvas, antialias: true });
+const context = canvas.getContext( 'webgl2', { antialias: true } );
+const renderer = new WebGLRenderer({ canvas, context });
 renderer.xr.enabled = true;
 renderer.logarithmicDepthBuffer = true;
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -58102,24 +58103,18 @@ skymaterial.onBeforeCompile = function (shader) {
 	shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
     #include <common>
     #define USE_UV
-    float random (vec2 st) {
-        return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
-    }
     `);
 	shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
-        vec4 col1;
-        vec4 col2;
-        float mixAmount;
+        vec4 col1 = vec4( 249, 229, 180, 255 ) / 255.0;
+        vec4 col2 = vec4( 0, 57, 115, 255 ) / 255.0;
+        float mixAmount = 0.0;
         if (vUv.y > 0.5) {
-            col1 = vec4( 249, 229, 180, 1 ) / 255.0;
-            col2 = vec4( 0, 57, 115, 1 ) / 255.0;
             float newY = (vUv.y - 0.5) * 2.0;
             mixAmount = sqrt(newY)*2.0;
         } else {
             col1 = vec4(0.6,0.6,0.6,1.0);
         }
-        vec4 random4 = vec4((random(vUv)-0.5) * (1.4 / 255.0));
-        diffuseColor *= mix(col1, col2, mixAmount) + random4;
+        diffuseColor *= mix(col1, col2, mixAmount);
     `);
 };
 const skysphere = new Mesh(skygeometry, skymaterial);
@@ -62433,8 +62428,8 @@ gamepad.addEventListener('axes3MoveEnd', handleUpEnd, true);
 
 // Original src: htt
 const BITS = 3;
-const TEXTURE_WIDTH = 32;
-const TEXTURE_HEIGHT = 32;
+const TEXTURE_WIDTH = 256;
+const TEXTURE_HEIGHT = 4;
 
 /**
  * Prepares texture for storing positions and normals for spline
@@ -62459,7 +62454,6 @@ function initSplineTexture(renderer) {
 
 	dataTexture.wrapS = RepeatWrapping;
 	dataTexture.wrapY = RepeatWrapping;
-	dataTexture.magFilter = LinearFilter;
 	dataTexture.needsUpdate = true;
 
 	return dataTexture;
@@ -62468,8 +62462,8 @@ function initSplineTexture(renderer) {
 function setTextureValue(texture, index, x, y, z, o) {
 	const image = texture.image;
 	// eslint-disable-next-line no-unused-vars
-	const { data, width } = image;
-	const i = BITS * width * (o || 0);
+	const { data } = image;
+	const i = BITS * TEXTURE_WIDTH * (o || 0);
 	data[index * BITS + i + 0] = x;
 	data[index * BITS + i + 1] = y;
 	data[index * BITS + i + 2] = z;
@@ -62511,7 +62505,7 @@ function updateSplineTexture(curve, texture, uniforms) {
 
 function getUniforms(splineTexture) {
 	const uniforms = {
-		texture: { value: splineTexture },
+		spineTexture: { value: splineTexture },
 		pathOffset: { type: 'f', value: 0 }, // time of path curve
 		pathSegment: { type: 'f', value: 1 }, // fractional length of path
 		spineOffset: { type: 'f', value: 161 },
@@ -62533,15 +62527,14 @@ function modifyShader( material, uniforms ) {
 		Object.assign(shader.uniforms, uniforms);
 
 		const vertexShader = `
-		uniform sampler2D texture;
-
+		uniform sampler2D spineTexture;
 		uniform float pathOffset;
 		uniform float pathSegment;
 		uniform float spineOffset;
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = ${TEXTURE_HEIGHT}.; // look up takes (i + 0.5) / textureLayers
+		float textureLayers = 4.; // look up takes (i + 0.5) / textureLayers
 
 		${shader.vertexShader}
 		`.replace(
@@ -62554,10 +62547,10 @@ function modifyShader( material, uniforms ) {
 		float xWeight = bend ? 0. : 1.;
 		float mt = spinePortion * pathSegment + pathOffset;
 
-		vec3 spinePos = texture2D(texture, vec2(mt, (0.5) / textureLayers)).xyz;
-		vec3 a = texture2D(texture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
-		vec3 b = texture2D(texture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
-		vec3 c = texture2D(texture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
+		vec3 spinePos = texture(spineTexture, vec2(mt, (0.5) / textureLayers)).xyz;
+		vec3 a = texture(spineTexture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
+		vec3 b = texture(spineTexture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
+		vec3 c = texture(spineTexture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
 		mat3 basis = mat3(a, b, c);
 
 		vec3 transformed = basis
@@ -62572,10 +62565,10 @@ function modifyShader( material, uniforms ) {
 	).replace(
 		'#include <project_vertex>',
 		`
-		vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
-		// vec4 mvPosition = viewMatrix * worldPos;
-		gl_Position = projectionMatrix * mvPosition;
-		`
+			vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
+			// vec4 mvPosition = viewMatrix * worldPos;
+			gl_Position = projectionMatrix * mvPosition;
+			`
 	);
 
 		shader.vertexShader = vertexShader;

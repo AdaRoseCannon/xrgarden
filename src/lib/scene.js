@@ -27,7 +27,8 @@ const sceneRadius = 500;
 const cameraGroup = new Group();
 
 const canvas = document.querySelector('canvas');
-const renderer = new WebGLRenderer({ canvas: canvas, antialias: true });
+const context = canvas.getContext( 'webgl2', { antialias: true } );
+const renderer = new WebGLRenderer({ canvas, context });
 renderer.xr.enabled = true;
 renderer.logarithmicDepthBuffer = true;
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -88,18 +89,16 @@ skymaterial.onBeforeCompile = function (shader) {
     }
     `);
 	shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
-        vec4 col1;
-        vec4 col2;
-        float mixAmount;
+        vec4 col1 = vec4( 249, 229, 180, 255 ) / 255.0;
+        vec4 col2 = vec4( 0, 57, 115, 255 ) / 255.0;
+        float mixAmount = 0.0;
         if (vUv.y > 0.5) {
-            col1 = vec4( 249, 229, 180, 1 ) / 255.0;
-            col2 = vec4( 0, 57, 115, 1 ) / 255.0;
             float newY = (vUv.y - 0.5) * 2.0;
             mixAmount = sqrt(newY)*2.0;
         } else {
             col1 = vec4(0.6,0.6,0.6,1.0);
-        }
-        vec4 random4 = vec4((random(vUv)-0.5) * (1.4 / 255.0));
+		}
+		vec4 random4 = vec4((random(vUv)-0.5) * (1.4 / 255.0));
         diffuseColor *= mix(col1, col2, mixAmount) + random4;
     `);
 };
