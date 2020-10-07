@@ -1,7 +1,7 @@
 // Original src: htt
 const BITS = 3;
-const TEXTURE_WIDTH = 256;
-const TEXTURE_HEIGHT = 4;
+const TEXTURE_WIDTH = 32;
+const TEXTURE_HEIGHT = 32;
 
 import {
 	DataTexture,
@@ -116,7 +116,7 @@ export function modifyShader( material, uniforms ) {
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = 4.; // look up takes (i + 0.5) / textureLayers
+		float textureLayers = ${TEXTURE_HEIGHT}.; // look up takes (i + 0.5) / textureLayers
 
 		${shader.vertexShader}
 		`.replace(
@@ -147,10 +147,10 @@ export function modifyShader( material, uniforms ) {
 	).replace(
 		'#include <project_vertex>',
 		`
-			vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
-			// vec4 mvPosition = viewMatrix * worldPos;
-			gl_Position = projectionMatrix * mvPosition;
-			`
+		vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
+		// vec4 mvPosition = viewMatrix * worldPos;
+		gl_Position = projectionMatrix * mvPosition;
+		`
 	)
 
 		shader.vertexShader = vertexShader
