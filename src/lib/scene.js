@@ -1,21 +1,22 @@
 /* eslint-disable no-case-declarations */
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {
-    WebGLRenderer,
-    Scene,
-    PerspectiveCamera,
-    AmbientLight,
-    DirectionalLight,
-    SphereGeometry,
-    BackSide,
-    Mesh,
-    MeshBasicMaterial,
-    Vector3,
-    MeshLambertMaterial,
-    PlaneGeometry,
-    TextureLoader,
-    Group,
-    RepeatWrapping
+	WebGLRenderer,
+	Scene,
+	PerspectiveCamera,
+	AmbientLight,
+	DirectionalLight,
+	SphereGeometry,
+	BackSide,
+	Mesh,
+	MeshBasicMaterial,
+	Vector3,
+	MeshLambertMaterial,
+	PlaneGeometry,
+	TextureLoader,
+	Group,
+	RepeatWrapping,
+	MeshPhongMaterial
 } from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import WebXRPolyfill from 'webxr-polyfill';
@@ -41,16 +42,16 @@ scene.add(cameraGroup);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.maxPolarAngle = Math.PI * 0.5;
-controls.target = new Vector3(0, 1, -5);
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.6, -5);
+controls.target = new Vector3(0, 1, 0);
 controls.update();
 
 function onWindowResize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+	const w = window.innerWidth;
+	const h = window.innerHeight;
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize(w, h);
 }
 window.addEventListener('resize', onWindowResize, false);
 onWindowResize();
@@ -61,9 +62,9 @@ light.intensity = 1.0;
 scene.add(light);
 // Add the sun
 light.add(
-    new Mesh(new SphereGeometry(sceneRadius/10, 32, 32), new MeshBasicMaterial({
-        color: 0xffaa33
-    }))
+	new Mesh(new SphereGeometry(sceneRadius/10, 32, 32), new MeshBasicMaterial({
+		color: 0xffaa33
+	}))
 )
 
 const light2 = new AmbientLight(0x003973);
@@ -72,21 +73,21 @@ scene.add(light2);
 
 const skygeometry = new SphereGeometry(sceneRadius, 50, 50, 0, 2 * Math.PI);
 const skymaterial = new MeshBasicMaterial({
-    side: BackSide,
-    depthWrite: false
+	side: BackSide,
+	depthWrite: false
 });
 
 // Nice sky with a bit of dithering to reduce banding.
 skymaterial.onBeforeCompile = function (shader) {
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n#define USE_UV');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+	shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n#define USE_UV');
+	shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
     #include <common>
     #define USE_UV
     float random (vec2 st) {
         return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
     }
     `);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+	shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
         vec4 col1;
         vec4 col2;
         float mixAmount;
@@ -107,32 +108,61 @@ skysphere.name = 'skysphere';
 scene.add(skysphere);
 
 const floorTexture = new TextureLoader().load('https://cdn.glitch.com/3423c223-e1e5-450d-8cfa-2f5215104916%2Fmemphis-mini.png?v=1579618577700');
-floorTexture.repeat.multiplyScalar(sceneRadius);
+floorTexture.repeat.multiplyScalar(sceneRadius/5);
 floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping;
 const floor = new Mesh(
-    new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
-    new MeshLambertMaterial({
-        map: floorTexture
-    })
+	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
+	new MeshLambertMaterial({
+		map: floorTexture
+	})
 );
 floor.rotation.x = -Math.PI / 2;
 floor.name = 'floor';
 scene.add(floor);
 
+const waterTexture = new TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/waternormals.jpg');
+waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
+waterTexture.repeat.multiplyScalar(sceneRadius/50);
+const water = new Mesh(
+	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
+	new MeshPhongMaterial({
+		normalMap: waterTexture,
+		metalness: 1,
+		roughness: 0,
+		color: 0x8ab39f,
+		transparent: true,
+		opacity: 0.4
+	})
+);
+water.renderOrder = 10;
+water.position.z = -5;
+water.position.y = 0.30;
+water.rotation.x = -Math.PI/2;
+scene.add(water);
+
 new WebXRPolyfill();
 document.body.appendChild( VRButton.createButton( renderer ) );
 
 const rafCallbacks = new Set();
+
+rafCallbacks.add(function (t) {
+	water.material.normalMap.offset.x += 0.01 * Math.sin(t / 10000)/sceneRadius;
+	water.material.normalMap.offset.y += 0.01 * Math.cos(t / 8000)/sceneRadius;
+	water.material.normalScale.x = 10 * (0.8 + 0.5 * Math.cos(t / 1000));
+	water.material.normalScale.y = 10 * (0.8 + 0.5 * Math.sin(t / 1200));
+	water.position.y = 0.3 + 0.1 * Math.sin(t / 2000);
+});
+
 renderer.setAnimationLoop(function (time) {
-    TWEEN.update(time);
-    rafCallbacks.forEach(cb => cb(time));
-    renderer.render(scene, camera);
+	TWEEN.update(time);
+	rafCallbacks.forEach(cb => cb(time));
+	renderer.render(scene, camera);
 });
 
 export {
-    renderer,
-    scene,
-    rafCallbacks,
-    cameraGroup,
-    camera
+	renderer,
+	scene,
+	rafCallbacks,
+	cameraGroup,
+	camera
 }

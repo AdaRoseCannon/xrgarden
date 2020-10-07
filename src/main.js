@@ -1,52 +1,43 @@
 import {
-    renderer,
-    scene,
-    camera
+	renderer,
+	scene,
+	camera,
+	rafCallbacks
 } from './lib/scene.js';
 
 import {
-    controller1
+	controller1
 } from './lib/controllers/controllers.js';
 
 import {
-    gamepad
+	gamepad
 } from './lib/controllers/gamepad.js';
 
 import {
-    water
-} from './lib/water.js';
-scene.add(water);
+	initSplineTexture,
+	modifyShader,
+	updateSplineTexture,
+	getUniforms
+} from './lib/flow.js';
 
 import {
-    Mesh,
-    MeshBasicMaterial,
-    PlaneGeometry,
-    TextureLoader,
-    AdditiveBlending,
-    CanvasTexture,
-    DoubleSide
+	Mesh,
+	PlaneGeometry,
+	AdditiveBlending,
+	CanvasTexture,
+	DoubleSide,
+	MeshBasicMaterial,
+	Vector3,
+	CatmullRomCurve3,
+	BufferGeometry,
+	LineBasicMaterial,
+	Line
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const loader = new GLTFLoader();
 
-// Red target on the floor
-const targetTexture = new TextureLoader().load('./assets/target.png');
-const target = new Mesh(
-    new PlaneGeometry(0.5, 0.5, 1, 1),
-    new MeshBasicMaterial({
-        map: targetTexture,
-        blending: AdditiveBlending,
-        color: 0x660000,
-        transparent: true
-    })
-);
-target.position.z = -5;
-target.position.y = 0.01;
-target.rotation.x = -Math.PI/2;
-scene.add(target);
-
-// Debugging 
+// Debugging
 
 const canvas = document.createElement('canvas');
 const canvasTexture = new CanvasTexture(canvas);
@@ -54,13 +45,13 @@ canvas.width = 1024;
 canvas.height = 256;
 const ctx = canvas.getContext('2d');
 function writeText(text) {
-    if (typeof text !== 'string') text = JSON.stringify(text,null,2);
-    ctx.font = "120px fantasy";
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    text.split('\n').forEach((str, i) => ctx.fillText(str, 0, (i+1)*120));
-    canvasTexture.needsUpdate = true;
+	if (typeof text !== 'string') text = JSON.stringify(text,null,2);
+	ctx.font = "120px fantasy";
+	ctx.fillStyle = 'black';
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle = 'white';
+	text.split('\n').forEach((str, i) => ctx.fillText(str, 0, (i+1)*120));
+	canvasTexture.needsUpdate = true;
 }
 
 const geometry = new PlaneGeometry( 0.3 * canvas.width/1024, 0.3 * canvas.height/1024 );
@@ -73,25 +64,85 @@ controller1.add( consolePlane );
 writeText('hi');
 
 gamepad.addEventListener('gamepadInteraction', function (event) {
-    writeText(`${event.detail.type} ${event.detail.value}`);
+	writeText(`${event.detail.type} ${event.detail.value}`);
 });
 
-(async function () {
+const modelsPromise = (async function () {
 
-    // Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
-    const {scene: gltfScene} = await new Promise(resolve => loader.load('./assets/forest.glb', resolve));
-    const trees = gltfScene.children[0];
-    trees.position.z = -5;
-    trees.position.y = 2.5;
-    trees.scale.multiplyScalar(10);
-    trees.traverse(o => {
-        if (o.material) {
-            o.material.side = DoubleSide;
-            o.material.depthWrite = true;
-        }
-    });
-    scene.add(trees);
+	// Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
+	const {scene: treesScene} = await new Promise(resolve => loader.load('./assets/forest.glb', resolve));
+	const trees = treesScene.children[0];
+	trees.position.z = 0;
+	trees.position.y = 2.5;
+	trees.scale.multiplyScalar(10);
+	trees.traverse(o => {
+		if (o.material) {
+			o.material.side = DoubleSide;
+			o.material.depthWrite = true;
+		}
+	});
+	scene.add(trees);
+
+	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
+	const { scene: fish } = await new Promise(resolve => loader.load('./assets/fish.glb', resolve));
+	fish.position.y = 0.15;
+	fish.children[0].children[0].children[0].children[0].children[0].scale.set(0.2, 0.2, 0.2);
+	fish.children[0].children[0].children[0].children[0].children[0].position.set(0,-0.18,0);
+	fish.children[0].children[0].children[0].children[0].children[0].rotation.set(Math.PI/2,0,Math.PI/2);
+	fish.traverse(o => {
+		if (o.material) {
+			o.material.side = DoubleSide;
+			o.material.depthWrite = true;
+		}
+	});
+	window.fish = fish;
+	scene.add(fish);
+
+	return {fish, trees};
 }());
+
+(async function generatePath() {
+	//Create a closed wavey loop
+	const curve = new CatmullRomCurve3( [
+		new Vector3( -1, 0.15, 1 ),
+		new Vector3( -1, 0.15, -1 ),
+		new Vector3( 0, 0.15, 0 ),
+		new Vector3( 1, 0.15, -1 ),
+		new Vector3( 2, 0.15, 2 )
+	] );
+
+	curve.curveType = 'centripetal';
+	curve.closed = true;
+
+	const points = curve.getPoints( 50 );
+	const geometry = new BufferGeometry().setFromPoints( points );
+
+	const material = new LineBasicMaterial( { color : 0x00ff00 } );
+
+	// Create the final object to add to the scene
+	const line = new Line( geometry, material );
+
+	scene.add(line);
+
+	const splineTexure = initSplineTexture(renderer);
+	const uniforms = getUniforms(splineTexure);
+	updateSplineTexture(curve, splineTexure, uniforms);
+
+	const {fish} = await modelsPromise;
+	fish.traverse( function ( child ) {
+		if ( child instanceof Mesh ) {
+			modifyShader( child.material, uniforms );
+		}
+	});
+
+	window.uniforms = uniforms;
+
+	const speedPerTick = 0.05 / curve.getLength();
+
+	rafCallbacks.add(function () {
+		uniforms.pathOffset.value += speedPerTick;
+	});
+}())
 
 window.renderer = renderer;
 window.camera = camera;

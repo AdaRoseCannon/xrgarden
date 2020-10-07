@@ -58061,16 +58061,16 @@ scene.add(cameraGroup);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.maxPolarAngle = Math.PI * 0.5;
-controls.target = new Vector3(0, 1, -5);
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.6, -5);
+controls.target = new Vector3(0, 1, 0);
 controls.update();
 
 function onWindowResize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+	const w = window.innerWidth;
+	const h = window.innerHeight;
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize(w, h);
 }
 window.addEventListener('resize', onWindowResize, false);
 onWindowResize();
@@ -58081,9 +58081,9 @@ light.intensity = 1.0;
 scene.add(light);
 // Add the sun
 light.add(
-    new Mesh(new SphereGeometry(sceneRadius/10, 32, 32), new MeshBasicMaterial({
-        color: 0xffaa33
-    }))
+	new Mesh(new SphereGeometry(sceneRadius/10, 32, 32), new MeshBasicMaterial({
+		color: 0xffaa33
+	}))
 );
 
 const light2 = new AmbientLight(0x003973);
@@ -58092,21 +58092,21 @@ scene.add(light2);
 
 const skygeometry = new SphereGeometry(sceneRadius, 50, 50, 0, 2 * Math.PI);
 const skymaterial = new MeshBasicMaterial({
-    side: BackSide,
-    depthWrite: false
+	side: BackSide,
+	depthWrite: false
 });
 
 // Nice sky with a bit of dithering to reduce banding.
 skymaterial.onBeforeCompile = function (shader) {
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n#define USE_UV');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+	shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n#define USE_UV');
+	shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
     #include <common>
     #define USE_UV
     float random (vec2 st) {
         return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
     }
     `);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+	shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
         vec4 col1;
         vec4 col2;
         float mixAmount;
@@ -58127,26 +58127,55 @@ skysphere.name = 'skysphere';
 scene.add(skysphere);
 
 const floorTexture = new TextureLoader().load('https://cdn.glitch.com/3423c223-e1e5-450d-8cfa-2f5215104916%2Fmemphis-mini.png?v=1579618577700');
-floorTexture.repeat.multiplyScalar(sceneRadius);
+floorTexture.repeat.multiplyScalar(sceneRadius/5);
 floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping;
 const floor = new Mesh(
-    new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
-    new MeshLambertMaterial({
-        map: floorTexture
-    })
+	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
+	new MeshLambertMaterial({
+		map: floorTexture
+	})
 );
 floor.rotation.x = -Math.PI / 2;
 floor.name = 'floor';
 scene.add(floor);
 
+const waterTexture = new TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/waternormals.jpg');
+waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
+waterTexture.repeat.multiplyScalar(sceneRadius/50);
+const water = new Mesh(
+	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
+	new MeshPhongMaterial({
+		normalMap: waterTexture,
+		metalness: 1,
+		roughness: 0,
+		color: 0x8ab39f,
+		transparent: true,
+		opacity: 0.4
+	})
+);
+water.renderOrder = 10;
+water.position.z = -5;
+water.position.y = 0.30;
+water.rotation.x = -Math.PI/2;
+scene.add(water);
+
 new WebXRPolyfill();
 document.body.appendChild( VRButton.createButton( renderer ) );
 
 const rafCallbacks = new Set();
+
+rafCallbacks.add(function (t) {
+	water.material.normalMap.offset.x += 0.01 * Math.sin(t / 10000)/sceneRadius;
+	water.material.normalMap.offset.y += 0.01 * Math.cos(t / 8000)/sceneRadius;
+	water.material.normalScale.x = 10 * (0.8 + 0.5 * Math.cos(t / 1000));
+	water.material.normalScale.y = 10 * (0.8 + 0.5 * Math.sin(t / 1200));
+	water.position.y = 0.3 + 0.1 * Math.sin(t / 2000);
+});
+
 renderer.setAnimationLoop(function (time) {
-    TWEEN.update(time);
-    rafCallbacks.forEach(cb => cb(time));
-    renderer.render(scene, camera);
+	TWEEN.update(time);
+	rafCallbacks.forEach(cb => cb(time));
+	renderer.render(scene, camera);
 });
 
 /**
@@ -62128,77 +62157,77 @@ const prevGamePads = new Map();
 const gamepad = new EventTarget();
 
 function dispatchEvent(type, detail) {
-    const specificEvent = new CustomEvent(type, {detail});
+	const specificEvent = new CustomEvent(type, {detail});
 
-    const generalDetail = {type};
-    Object.assign(generalDetail, detail);
-    const generalEvent = new CustomEvent('gamepadInteraction', {detail: generalDetail});
+	const generalDetail = {type};
+	Object.assign(generalDetail, detail);
+	const generalEvent = new CustomEvent('gamepadInteraction', {detail: generalDetail});
 
-    gamepad.dispatchEvent(specificEvent);
-    gamepad.dispatchEvent(generalEvent);
+	gamepad.dispatchEvent(specificEvent);
+	gamepad.dispatchEvent(generalEvent);
 }
 
 rafCallbacks.add(() => {
-    const session = renderer.xr.getSession();
-    let i = 0;
-    if (session) for (const source of session.inputSources) {
-        if (!source.gamepad) continue;
-        const controller = renderer.xr.getController(i++);
-        const old = prevGamePads.get(source);
-        const data = {
-            buttons: source.gamepad.buttons.map(b => b.value),
-            axes: source.gamepad.axes.slice(0)
-        };
-        if (old) {
-            data.buttons.forEach((value,i)=>{
-                if (value !== old.buttons[i]) {
-                    if (value === 1) {
-                        dispatchEvent(`button${i}Down`, {value, source, controller,data});
-                    } else {
-                        dispatchEvent(`button${i}Up`, {value, source, controller,data});
-                    }
-                }
-            });
-            data.axes.forEach((value,i)=>{
-                if (value !== old.axes[i]) {
-                    dispatchEvent(`axes${i}Move`, {value, source, controller,data});
-                    if (old.axes[i] === 0) {
-                        dispatchEvent(`axes${i}MoveStart`, {value, source, controller,data});
-                    }
-                    if (Math.abs(old.axes[i]) < 0.5 && Math.abs(value) > 0.5) {
-                        dispatchEvent(`axes${i}MoveMiddle`, {value, source, controller,data});
-                    }
-                    if (value === 0) {
-                        dispatchEvent(`axes${i}MoveEnd`, {value, source, controller,data});
-                    }
-                }
-            });
-        }
-        prevGamePads.set(source, data);
-    }
+	const session = renderer.xr.getSession();
+	let i = 0;
+	if (session) for (const source of session.inputSources) {
+		if (!source.gamepad) continue;
+		const controller = renderer.xr.getController(i++);
+		const old = prevGamePads.get(source);
+		const data = {
+			buttons: source.gamepad.buttons.map(b => b.value),
+			axes: source.gamepad.axes.slice(0)
+		};
+		if (old) {
+			data.buttons.forEach((value,i)=>{
+				if (value !== old.buttons[i]) {
+					if (value === 1) {
+						dispatchEvent(`button${i}Down`, {value, source, controller,data});
+					} else {
+						dispatchEvent(`button${i}Up`, {value, source, controller,data});
+					}
+				}
+			});
+			data.axes.forEach((value,i)=>{
+				if (value !== old.axes[i]) {
+					dispatchEvent(`axes${i}Move`, {value, source, controller,data});
+					if (old.axes[i] === 0) {
+						dispatchEvent(`axes${i}MoveStart`, {value, source, controller,data});
+					}
+					if (Math.abs(old.axes[i]) < 0.5 && Math.abs(value) > 0.5) {
+						dispatchEvent(`axes${i}MoveMiddle`, {value, source, controller,data});
+					}
+					if (value === 0) {
+						dispatchEvent(`axes${i}MoveEnd`, {value, source, controller,data});
+					}
+				}
+			});
+		}
+		prevGamePads.set(source, data);
+	}
 });
 
 function locomotion(offset) {
-    const newPos = new Vector3();
-    newPos.copy(cameraGroup.position);
-    newPos.add(offset);
-    const dist = offset.length();
+	const newPos = new Vector3();
+	newPos.copy(cameraGroup.position);
+	newPos.add(offset);
+	const dist = offset.length();
 
-    blinkerSphere.visible = true;
-    blinkerSphere.scale.set(2.5,2.5,2.5);
-    new TWEEN.Tween(blinkerSphere.scale)
-        .to({x:1,y:1,z:1}, 400)
-        .easing(TWEEN.Easing.Quadratic.Out)
-        .start();
-    new TWEEN.Tween(cameraGroup.position)
-        .delay(400)
-        .to(newPos, dist*120)
-        .chain(
-            new TWEEN.Tween(blinkerSphere.scale)
-                .to({x:2.5,y:2.5,z:2.5}, 100)
-                .onComplete(() => blinkerSphere.visible = false)
-        )
-        .start();
+	blinkerSphere.visible = true;
+	blinkerSphere.scale.set(2.5,2.5,2.5);
+	new TWEEN.Tween(blinkerSphere.scale)
+		.to({x:1,y:1,z:1}, 400)
+		.easing(TWEEN.Easing.Quadratic.Out)
+		.start();
+	new TWEEN.Tween(cameraGroup.position)
+		.delay(400)
+		.to(newPos, dist*120)
+		.chain(
+			new TWEEN.Tween(blinkerSphere.scale)
+				.to({x:2.5,y:2.5,z:2.5}, 100)
+				.onComplete(() => blinkerSphere.visible = false)
+		)
+		.start();
 }
 
 // simple grid environment, locked to the user's space, makes motion more comfortable
@@ -62206,13 +62235,13 @@ const gridTexture = new TextureLoader().load('./assets/grid.png');
 gridTexture.repeat.multiplyScalar(50);
 gridTexture.wrapS = gridTexture.wrapT = RepeatWrapping;
 const floor2 = new Mesh(
-    new PlaneGeometry(50, 50, 50, 50),
-    new MeshBasicMaterial({
-        map: gridTexture,
-        color: 0x555555,
-        depthWrite: false,
-        blending: AdditiveBlending
-    })
+	new PlaneGeometry(50, 50, 50, 50),
+	new MeshBasicMaterial({
+		map: gridTexture,
+		color: 0x555555,
+		depthWrite: false,
+		blending: AdditiveBlending
+	})
 );
 floor2.rotation.x = -Math.PI / 2;
 floor2.name = 'floor2';
@@ -62220,8 +62249,8 @@ cameraGroup.add(floor2);
 
 const sky2geometry = new SphereGeometry(25, 50, 50, 0, 2 * Math.PI);
 const sky2material = new MeshBasicMaterial({
-    color: 0xaaaaaa,
-    depthWrite: false
+	color: 0xaaaaaa,
+	depthWrite: false
 });
 sky2material.side = BackSide;
 const sky2sphere = new Mesh(sky2geometry, sky2material);
@@ -62231,8 +62260,8 @@ cameraGroup.add(sky2sphere);
 const blinkerSphereGeometry = new SphereBufferGeometry(0.3, 64, 8, 0, Math.PI*2, 0, Math.PI * 0.85);
 blinkerSphereGeometry.translate(0,0.3,0);
 const blinkerSphereMaterial = new MeshBasicMaterial({
-    side: BackSide,
-    colorWrite: false
+	side: BackSide,
+	colorWrite: false
 });
 const blinkerSphere = new Mesh( blinkerSphereGeometry, blinkerSphereMaterial );
 blinkerSphere.rotation.set(Math.PI/2, 0, 0);
@@ -62245,10 +62274,10 @@ floor2.renderOrder = -102;
 sky2sphere.renderOrder = -103;
 
 function positionAtT(inVec,t,p,v,g) {
-    inVec.copy(p);
-    inVec.addScaledVector(v,t);
-    inVec.addScaledVector(g,0.5*t**2);
-    return inVec;
+	inVec.copy(p);
+	inVec.addScaledVector(v,t);
+	inVec.addScaledVector(g,0.5*t**2);
+	return inVec;
 }
 
 // Utility Vectors
@@ -62276,13 +62305,13 @@ const guidelight = new PointLight(0xffeeaa, 0, 2);
 // The target on the ground
 const guidespriteTexture = new TextureLoader().load('./assets/target.png');
 const guidesprite = new Mesh(
-    new PlaneGeometry(0.3, 0.3, 1, 1),
-    new MeshBasicMaterial({
-        map: guidespriteTexture,
-        blending: AdditiveBlending,
-        color: 0x555555,
-        transparent: true
-    })
+	new PlaneGeometry(0.3, 0.3, 1, 1),
+	new MeshBasicMaterial({
+		map: guidespriteTexture,
+		blending: AdditiveBlending,
+		color: 0x555555,
+		transparent: true
+	})
 );
 guidesprite.rotation.x = -Math.PI/2;
 
@@ -62310,598 +62339,256 @@ controllerGrip2.add( model2 );
 cameraGroup.add( controllerGrip2 );
 
 function onSelectStart() {
-    guidingController = this;
-    guidelight.intensity = 1;
-    this.add(guideline);
-    scene.add(guidesprite);
+	guidingController = this;
+	guidelight.intensity = 1;
+	this.add(guideline);
+	scene.add(guidesprite);
 }
 
 function onSelectEnd() {
-    if (guidingController === this) {
+	if (guidingController === this) {
 
-        // first work out vector from feet to cursor
+		// first work out vector from feet to cursor
 
-        // feet position
-        const feetPos = renderer.xr.getCamera(camera).getWorldPosition(tempVec);
-        feetPos.y = 0;
+		// feet position
+		const feetPos = renderer.xr.getCamera(camera).getWorldPosition(tempVec);
+		feetPos.y = 0;
 
-        // cursor position
-        const p = guidingController.getWorldPosition(tempVecP);
-        const v = guidingController.getWorldDirection(tempVecV);
-        v.multiplyScalar(6);
-        const t = (-v.y  + Math.sqrt(v.y**2 - 2*p.y*g.y))/g.y;
-        const cursorPos = positionAtT(tempVec1,t,p,v,g);
+		// cursor position
+		const p = guidingController.getWorldPosition(tempVecP);
+		const v = guidingController.getWorldDirection(tempVecV);
+		v.multiplyScalar(6);
+		const t = (-v.y  + Math.sqrt(v.y**2 - 2*p.y*g.y))/g.y;
+		const cursorPos = positionAtT(tempVec1,t,p,v,g);
 
-        // Offset
-        const offset = cursorPos.addScaledVector(feetPos ,-1);
+		// Offset
+		const offset = cursorPos.addScaledVector(feetPos ,-1);
 
-        // Do the locomotion
-        locomotion(offset);
+		// Do the locomotion
+		locomotion(offset);
 
-        // clean up
-        guidingController = null;
-        guidelight.intensity = 0;
-        this.remove(guideline);
-        scene.remove(guidesprite);
-    }
+		// clean up
+		guidingController = null;
+		guidelight.intensity = 0;
+		this.remove(guideline);
+		scene.remove(guidesprite);
+	}
 }
 
 rafCallbacks.add(() => {
-    if (guidingController) {
-        // Controller start position
-        const p = guidingController.getWorldPosition(tempVecP);
+	if (guidingController) {
+		// Controller start position
+		const p = guidingController.getWorldPosition(tempVecP);
 
-        // Set Vector V to the direction of the controller, at 1m/s
-        const v = guidingController.getWorldDirection(tempVecV);
+		// Set Vector V to the direction of the controller, at 1m/s
+		const v = guidingController.getWorldDirection(tempVecV);
 
-        // Scale the initial velocity to 6m/s
-        v.multiplyScalar(6);
+		// Scale the initial velocity to 6m/s
+		v.multiplyScalar(6);
 
-        // Time for tele ball to hit ground
-        const t = (-v.y  + Math.sqrt(v.y**2 - 2*p.y*g.y))/g.y;
+		// Time for tele ball to hit ground
+		const t = (-v.y  + Math.sqrt(v.y**2 - 2*p.y*g.y))/g.y;
 
-        const vertex = tempVec.set(0,0,0);
-        for (let i=1; i<=lineSegments; i++) {
+		const vertex = tempVec.set(0,0,0);
+		for (let i=1; i<=lineSegments; i++) {
 
-            // set vertex to current position of the virtual ball at time t
-            positionAtT(vertex,i*t/lineSegments,p,v,g);
-            guidingController.worldToLocal(vertex);
-            vertex.toArray(lineGeometryVertices,i*3);
-        }
-        guideline.geometry.attributes.position.needsUpdate = true;
-        
-        // Place the light and sprite near the end of the poing
-        positionAtT(guidelight.position,t*0.98,p,v,g);
-        positionAtT(guidesprite.position,t*0.98,p,v,g);
-    }
+			// set vertex to current position of the virtual ball at time t
+			positionAtT(vertex,i*t/lineSegments,p,v,g);
+			guidingController.worldToLocal(vertex);
+			vertex.toArray(lineGeometryVertices,i*3);
+		}
+		guideline.geometry.attributes.position.needsUpdate = true;
+
+		// Place the light and sprite near the end of the poing
+		positionAtT(guidelight.position,t*0.98,p,v,g);
+		positionAtT(guidesprite.position,t*0.98,p,v,g);
+	}
 });
 
 function handleMove({detail}) {
-    // Turn left
-    if (detail.value > 0) {
-        cameraGroup.rotation.y -= Math.PI/4;
-    }
-    // Turn right
-    if (detail.value < 0) {
-        cameraGroup.rotation.y += Math.PI/4;
-    }
+	// Turn left
+	if (detail.value > 0) {
+		cameraGroup.rotation.y -= Math.PI/4;
+	}
+	// Turn right
+	if (detail.value < 0) {
+		cameraGroup.rotation.y += Math.PI/4;
+	}
 }
 gamepad.addEventListener('axes0MoveMiddle', handleMove, true);
 gamepad.addEventListener('axes2MoveMiddle', handleMove, true);
 
 function handleUp({detail}) {
-    if (detail.value < 0) {
-        onSelectStart.bind(detail.controller)();
-    }
+	if (detail.value < 0) {
+		onSelectStart.bind(detail.controller)();
+	}
 }
 function handleUpEnd({detail}) {
-    onSelectEnd.bind(detail.controller)();
+	onSelectEnd.bind(detail.controller)();
 }
 gamepad.addEventListener('axes1MoveMiddle', handleUp, true);
 gamepad.addEventListener('axes3MoveMiddle', handleUp, true);
 gamepad.addEventListener('axes1MoveEnd', handleUpEnd, true);
 gamepad.addEventListener('axes3MoveEnd', handleUpEnd, true);
 
-/*!
-Copyright (C) 2010-2013 Raymond Hill: https://github.com/gorhill/Javascript-Voronoi
-MIT License: See https://github.com/gorhill/Javascript-Voronoi/LICENSE.md
-*/
-function Voronoi(){this.vertices=null;this.edges=null;this.cells=null;this.toRecycle=null;this.beachsectionJunkyard=[];this.circleEventJunkyard=[];
-this.vertexJunkyard=[];this.edgeJunkyard=[];this.cellJunkyard=[];}Voronoi.prototype.reset=function(){if(!this.beachline){this.beachline=new this.RBTree();
-}if(this.beachline.root){var a=this.beachline.getFirst(this.beachline.root);while(a){this.beachsectionJunkyard.push(a);a=a.rbNext;
-}}this.beachline.root=null;if(!this.circleEvents){this.circleEvents=new this.RBTree();}this.circleEvents.root=this.firstCircleEvent=null;
-this.vertices=[];this.edges=[];this.cells=[];};Voronoi.prototype.sqrt=Math.sqrt;Voronoi.prototype.abs=Math.abs;Voronoi.prototype.ε=Voronoi.ε=1e-9;
-Voronoi.prototype.invε=Voronoi.invε=1/Voronoi.ε;Voronoi.prototype.equalWithEpsilon=function(d,c){return this.abs(d-c)<1e-9
-};Voronoi.prototype.greaterThanWithEpsilon=function(d,c){return d-c>1e-9};Voronoi.prototype.greaterThanOrEqualWithEpsilon=function(d,c){return c-d<1e-9
-};Voronoi.prototype.lessThanWithEpsilon=function(d,c){return c-d>1e-9};Voronoi.prototype.lessThanOrEqualWithEpsilon=function(d,c){return d-c<1e-9
-};Voronoi.prototype.RBTree=function(){this.root=null;};Voronoi.prototype.RBTree.prototype.rbInsertSuccessor=function(e,a){var d;
-if(e){a.rbPrevious=e;a.rbNext=e.rbNext;if(e.rbNext){e.rbNext.rbPrevious=a;}e.rbNext=a;if(e.rbRight){e=e.rbRight;while(e.rbLeft){e=e.rbLeft;
-}e.rbLeft=a;}else {e.rbRight=a;}d=e;}else {if(this.root){e=this.getFirst(this.root);a.rbPrevious=null;a.rbNext=e;e.rbPrevious=a;
-e.rbLeft=a;d=e;}else {a.rbPrevious=a.rbNext=null;this.root=a;d=null;}}a.rbLeft=a.rbRight=null;a.rbParent=d;a.rbRed=true;var c,b;
-e=a;while(d&&d.rbRed){c=d.rbParent;if(d===c.rbLeft){b=c.rbRight;if(b&&b.rbRed){d.rbRed=b.rbRed=false;c.rbRed=true;e=c;}else {if(e===d.rbRight){this.rbRotateLeft(d);
-e=d;d=e.rbParent;}d.rbRed=false;c.rbRed=true;this.rbRotateRight(c);}}else {b=c.rbLeft;if(b&&b.rbRed){d.rbRed=b.rbRed=false;c.rbRed=true;
-e=c;}else {if(e===d.rbLeft){this.rbRotateRight(d);e=d;d=e.rbParent;}d.rbRed=false;c.rbRed=true;this.rbRotateLeft(c);}}d=e.rbParent;
-}this.root.rbRed=false;};Voronoi.prototype.RBTree.prototype.rbRemoveNode=function(f){if(f.rbNext){f.rbNext.rbPrevious=f.rbPrevious;
-}if(f.rbPrevious){f.rbPrevious.rbNext=f.rbNext;}f.rbNext=f.rbPrevious=null;var e=f.rbParent,g=f.rbLeft,b=f.rbRight,d;if(!g){d=b;
-}else {if(!b){d=g;}else {d=this.getFirst(b);}}if(e){if(e.rbLeft===f){e.rbLeft=d;}else {e.rbRight=d;}}else {this.root=d;}var a;if(g&&b){a=d.rbRed;
-d.rbRed=f.rbRed;d.rbLeft=g;g.rbParent=d;if(d!==b){e=d.rbParent;d.rbParent=f.rbParent;f=d.rbRight;e.rbLeft=f;d.rbRight=b;b.rbParent=d;
-}else {d.rbParent=e;e=d;f=d.rbRight;}}else {a=f.rbRed;f=d;}if(f){f.rbParent=e;}if(a){return}if(f&&f.rbRed){f.rbRed=false;return
-}var c;do{if(f===this.root){break}if(f===e.rbLeft){c=e.rbRight;if(c.rbRed){c.rbRed=false;e.rbRed=true;this.rbRotateLeft(e);
-c=e.rbRight;}if((c.rbLeft&&c.rbLeft.rbRed)||(c.rbRight&&c.rbRight.rbRed)){if(!c.rbRight||!c.rbRight.rbRed){c.rbLeft.rbRed=false;
-c.rbRed=true;this.rbRotateRight(c);c=e.rbRight;}c.rbRed=e.rbRed;e.rbRed=c.rbRight.rbRed=false;this.rbRotateLeft(e);f=this.root;
-break}}else {c=e.rbLeft;if(c.rbRed){c.rbRed=false;e.rbRed=true;this.rbRotateRight(e);c=e.rbLeft;}if((c.rbLeft&&c.rbLeft.rbRed)||(c.rbRight&&c.rbRight.rbRed)){if(!c.rbLeft||!c.rbLeft.rbRed){c.rbRight.rbRed=false;
-c.rbRed=true;this.rbRotateLeft(c);c=e.rbLeft;}c.rbRed=e.rbRed;e.rbRed=c.rbLeft.rbRed=false;this.rbRotateRight(e);f=this.root;
-break}}c.rbRed=true;f=e;e=e.rbParent;}while(!f.rbRed);if(f){f.rbRed=false;}};Voronoi.prototype.RBTree.prototype.rbRotateLeft=function(b){var d=b,c=b.rbRight,a=d.rbParent;
-if(a){if(a.rbLeft===d){a.rbLeft=c;}else {a.rbRight=c;}}else {this.root=c;}c.rbParent=a;d.rbParent=c;d.rbRight=c.rbLeft;if(d.rbRight){d.rbRight.rbParent=d;
-}c.rbLeft=d;};Voronoi.prototype.RBTree.prototype.rbRotateRight=function(b){var d=b,c=b.rbLeft,a=d.rbParent;if(a){if(a.rbLeft===d){a.rbLeft=c;
-}else {a.rbRight=c;}}else {this.root=c;}c.rbParent=a;d.rbParent=c;d.rbLeft=c.rbRight;if(d.rbLeft){d.rbLeft.rbParent=d;}c.rbRight=d;
-};Voronoi.prototype.RBTree.prototype.getFirst=function(a){while(a.rbLeft){a=a.rbLeft;}return a};Voronoi.prototype.RBTree.prototype.getLast=function(a){while(a.rbRight){a=a.rbRight;
-}return a};Voronoi.prototype.Diagram=function(a){this.site=a;};Voronoi.prototype.Cell=function(a){this.site=a;this.halfedges=[];
-this.closeMe=false;};Voronoi.prototype.Cell.prototype.init=function(a){this.site=a;this.halfedges=[];this.closeMe=false;return this
-};Voronoi.prototype.createCell=function(b){var a=this.cellJunkyard.pop();if(a){return a.init(b)}return new this.Cell(b)};
-Voronoi.prototype.Cell.prototype.prepareHalfedges=function(){var a=this.halfedges,b=a.length,c;while(b--){c=a[b].edge;if(!c.vb||!c.va){a.splice(b,1);
-}}a.sort(function(e,d){return d.angle-e.angle});return a.length};Voronoi.prototype.Cell.prototype.getNeighborIds=function(){var a=[],b=this.halfedges.length,c;
-while(b--){c=this.halfedges[b].edge;if(c.lSite!==null&&c.lSite.voronoiId!=this.site.voronoiId){a.push(c.lSite.voronoiId);}else {if(c.rSite!==null&&c.rSite.voronoiId!=this.site.voronoiId){a.push(c.rSite.voronoiId);
-}}}return a};Voronoi.prototype.Cell.prototype.getBbox=function(){var i=this.halfedges,d=i.length,a=Infinity,g=Infinity,c=-Infinity,b=-Infinity,h,f,e;
-while(d--){h=i[d].getStartpoint();f=h.x;e=h.y;if(f<a){a=f;}if(e<g){g=e;}if(f>c){c=f;}if(e>b){b=e;}}return {x:a,y:g,width:c-a,height:b-g}
-};Voronoi.prototype.Cell.prototype.pointIntersection=function(a,h){var b=this.halfedges,c=b.length,f,g,e,d;while(c--){f=b[c];
-g=f.getStartpoint();e=f.getEndpoint();d=(h-g.y)*(e.x-g.x)-(a-g.x)*(e.y-g.y);if(!d){return 0}if(d>0){return -1}}return 1};
-Voronoi.prototype.Vertex=function(a,b){this.x=a;this.y=b;};Voronoi.prototype.Edge=function(b,a){this.lSite=b;this.rSite=a;
-this.va=this.vb=null;};Voronoi.prototype.Halfedge=function(d,e,a){this.site=e;this.edge=d;if(a){this.angle=Math.atan2(a.y-e.y,a.x-e.x);
-}else {var c=d.va,b=d.vb;this.angle=d.lSite===e?Math.atan2(b.x-c.x,c.y-b.y):Math.atan2(c.x-b.x,b.y-c.y);}};Voronoi.prototype.createHalfedge=function(b,c,a){return new this.Halfedge(b,c,a)
-};Voronoi.prototype.Halfedge.prototype.getStartpoint=function(){return this.edge.lSite===this.site?this.edge.va:this.edge.vb
-};Voronoi.prototype.Halfedge.prototype.getEndpoint=function(){return this.edge.lSite===this.site?this.edge.vb:this.edge.va
-};Voronoi.prototype.createVertex=function(a,c){var b=this.vertexJunkyard.pop();if(!b){b=new this.Vertex(a,c);}else {b.x=a;b.y=c;
-}this.vertices.push(b);return b};Voronoi.prototype.createEdge=function(e,a,d,b){var c=this.edgeJunkyard.pop();if(!c){c=new this.Edge(e,a);
-}else {c.lSite=e;c.rSite=a;c.va=c.vb=null;}this.edges.push(c);if(d){this.setEdgeStartpoint(c,e,a,d);}if(b){this.setEdgeEndpoint(c,e,a,b);
-}this.cells[e.voronoiId].halfedges.push(this.createHalfedge(c,e,a));this.cells[a.voronoiId].halfedges.push(this.createHalfedge(c,a,e));
-return c};Voronoi.prototype.createBorderEdge=function(d,c,a){var b=this.edgeJunkyard.pop();if(!b){b=new this.Edge(d,null);
-}else {b.lSite=d;b.rSite=null;}b.va=c;b.vb=a;this.edges.push(b);return b};Voronoi.prototype.setEdgeStartpoint=function(b,d,a,c){if(!b.va&&!b.vb){b.va=c;
-b.lSite=d;b.rSite=a;}else {if(b.lSite===a){b.vb=c;}else {b.va=c;}}};Voronoi.prototype.setEdgeEndpoint=function(b,d,a,c){this.setEdgeStartpoint(b,a,d,c);
-};Voronoi.prototype.Beachsection=function(){};Voronoi.prototype.createBeachsection=function(a){var b=this.beachsectionJunkyard.pop();
-if(!b){b=new this.Beachsection();}b.site=a;return b};Voronoi.prototype.leftBreakPoint=function(e,f){var a=e.site,m=a.x,l=a.y,k=l-f;
-if(!k){return m}var n=e.rbPrevious;if(!n){return -Infinity}a=n.site;var h=a.x,g=a.y,d=g-f;if(!d){return h}var c=h-m,j=1/k-1/d,i=c/d;
-if(j){return (-i+this.sqrt(i*i-2*j*(c*c/(-2*d)-g+d/2+l-k/2)))/j+m}return (m+h)/2};Voronoi.prototype.rightBreakPoint=function(b,c){var d=b.rbNext;
-if(d){return this.leftBreakPoint(d,c)}var a=b.site;return a.y===c?a.x:Infinity};Voronoi.prototype.detachBeachsection=function(a){this.detachCircleEvent(a);
-this.beachline.rbRemoveNode(a);this.beachsectionJunkyard.push(a);};Voronoi.prototype.removeBeachsection=function(b){var a=b.circleEvent,j=a.x,h=a.ycenter,e=this.createVertex(j,h),f=b.rbPrevious,d=b.rbNext,l=[b],g=Math.abs;
-this.detachBeachsection(b);var m=f;while(m.circleEvent&&g(j-m.circleEvent.x)<1e-9&&g(h-m.circleEvent.ycenter)<1e-9){f=m.rbPrevious;
-l.unshift(m);this.detachBeachsection(m);m=f;}l.unshift(m);this.detachCircleEvent(m);var c=d;while(c.circleEvent&&g(j-c.circleEvent.x)<1e-9&&g(h-c.circleEvent.ycenter)<1e-9){d=c.rbNext;
-l.push(c);this.detachBeachsection(c);c=d;}l.push(c);this.detachCircleEvent(c);var k=l.length,i;for(i=1;i<k;i++){c=l[i];m=l[i-1];
-this.setEdgeStartpoint(c.edge,m.site,c.site,e);}m=l[0];c=l[k-1];c.edge=this.createEdge(m.site,c.site,undefined,e);this.attachCircleEvent(m);
-this.attachCircleEvent(c);};Voronoi.prototype.addBeachsection=function(l){var j=l.x,n=l.y;var p,m,v,q,o=this.beachline.root;
-while(o){v=this.leftBreakPoint(o,n)-j;if(v>1e-9){o=o.rbLeft;}else {q=j-this.rightBreakPoint(o,n);if(q>1e-9){if(!o.rbRight){p=o;
-break}o=o.rbRight;}else {if(v>-1e-9){p=o.rbPrevious;m=o;}else {if(q>-1e-9){p=o;m=o.rbNext;}else {p=m=o;}}break}}}var e=this.createBeachsection(l);
-this.beachline.rbInsertSuccessor(p,e);if(!p&&!m){return}if(p===m){this.detachCircleEvent(p);m=this.createBeachsection(p.site);
-this.beachline.rbInsertSuccessor(e,m);e.edge=m.edge=this.createEdge(p.site,e.site);this.attachCircleEvent(p);this.attachCircleEvent(m);
-return}if(p&&!m){e.edge=this.createEdge(p.site,e.site);return}if(p!==m){this.detachCircleEvent(p);this.detachCircleEvent(m);
-var h=p.site,k=h.x,i=h.y,t=l.x-k,r=l.y-i,a=m.site,c=a.x-k,b=a.y-i,u=2*(t*b-r*c),g=t*t+r*r,f=c*c+b*b,s=this.createVertex((b*g-r*f)/u+k,(t*f-c*g)/u+i);
-this.setEdgeStartpoint(m.edge,h,a,s);e.edge=this.createEdge(h,l,undefined,s);m.edge=this.createEdge(l,a,undefined,s);this.attachCircleEvent(p);
-this.attachCircleEvent(m);return}};Voronoi.prototype.CircleEvent=function(){this.arc=null;this.rbLeft=null;this.rbNext=null;
-this.rbParent=null;this.rbPrevious=null;this.rbRed=false;this.rbRight=null;this.site=null;this.x=this.y=this.ycenter=0;};Voronoi.prototype.attachCircleEvent=function(i){var r=i.rbPrevious,o=i.rbNext;
-if(!r||!o){return}var k=r.site,u=i.site,c=o.site;if(k===c){return}var t=u.x,s=u.y,n=k.x-t,l=k.y-s,f=c.x-t,e=c.y-s;var v=2*(n*e-l*f);
-if(v>=-2e-12){return}var h=n*n+l*l,g=f*f+e*e,m=(e*h-l*g)/v,j=(n*g-f*h)/v,b=j+s;var q=this.circleEventJunkyard.pop();if(!q){q=new this.CircleEvent();
-}q.arc=i;q.site=u;q.x=m+t;q.y=b+this.sqrt(m*m+j*j);q.ycenter=b;i.circleEvent=q;var a=null,p=this.circleEvents.root;while(p){if(q.y<p.y||(q.y===p.y&&q.x<=p.x)){if(p.rbLeft){p=p.rbLeft;
-}else {a=p.rbPrevious;break}}else {if(p.rbRight){p=p.rbRight;}else {a=p;break}}}this.circleEvents.rbInsertSuccessor(a,q);if(!a){this.firstCircleEvent=q;
-}};Voronoi.prototype.detachCircleEvent=function(b){var a=b.circleEvent;if(a){if(!a.rbPrevious){this.firstCircleEvent=a.rbNext;
-}this.circleEvents.rbRemoveNode(a);this.circleEventJunkyard.push(a);b.circleEvent=null;}};Voronoi.prototype.connectEdge=function(l,a){var b=l.vb;
-if(!!b){return true}var c=l.va,p=a.xl,n=a.xr,r=a.yt,d=a.yb,o=l.lSite,e=l.rSite,i=o.x,h=o.y,k=e.x,j=e.y,g=(i+k)/2,f=(h+j)/2,m,q;
-this.cells[o.voronoiId].closeMe=true;this.cells[e.voronoiId].closeMe=true;if(j!==h){m=(i-k)/(j-h);q=f-m*g;}if(m===undefined){if(g<p||g>=n){return false
-}if(i>k){if(!c||c.y<r){c=this.createVertex(g,r);}else {if(c.y>=d){return false}}b=this.createVertex(g,d);}else {if(!c||c.y>d){c=this.createVertex(g,d);
-}else {if(c.y<r){return false}}b=this.createVertex(g,r);}}else {if(m<-1||m>1){if(i>k){if(!c||c.y<r){c=this.createVertex((r-q)/m,r);
-}else {if(c.y>=d){return false}}b=this.createVertex((d-q)/m,d);}else {if(!c||c.y>d){c=this.createVertex((d-q)/m,d);}else {if(c.y<r){return false
-}}b=this.createVertex((r-q)/m,r);}}else {if(h<j){if(!c||c.x<p){c=this.createVertex(p,m*p+q);}else {if(c.x>=n){return false}}b=this.createVertex(n,m*n+q);
-}else {if(!c||c.x>n){c=this.createVertex(n,m*n+q);}else {if(c.x<p){return false}}b=this.createVertex(p,m*p+q);}}}l.va=c;l.vb=b;
-return true};Voronoi.prototype.clipEdge=function(d,i){var b=d.va.x,l=d.va.y,h=d.vb.x,g=d.vb.y,f=0,e=1,k=h-b,j=g-l;var c=b-i.xl;
-if(k===0&&c<0){return false}var a=-c/k;if(k<0){if(a<f){return false}if(a<e){e=a;}}else {if(k>0){if(a>e){return false}if(a>f){f=a;
-}}}c=i.xr-b;if(k===0&&c<0){return false}a=c/k;if(k<0){if(a>e){return false}if(a>f){f=a;}}else {if(k>0){if(a<f){return false
-}if(a<e){e=a;}}}c=l-i.yt;if(j===0&&c<0){return false}a=-c/j;if(j<0){if(a<f){return false}if(a<e){e=a;}}else {if(j>0){if(a>e){return false
-}if(a>f){f=a;}}}c=i.yb-l;if(j===0&&c<0){return false}a=c/j;if(j<0){if(a>e){return false}if(a>f){f=a;}}else {if(j>0){if(a<f){return false
-}if(a<e){e=a;}}}if(f>0){d.va=this.createVertex(b+f*k,l+f*j);}if(e<1){d.vb=this.createVertex(b+e*k,l+e*j);}if(f>0||e<1){this.cells[d.lSite.voronoiId].closeMe=true;
-this.cells[d.rSite.voronoiId].closeMe=true;}return true};Voronoi.prototype.clipEdges=function(e){var a=this.edges,d=a.length,c,b=Math.abs;
-while(d--){c=a[d];if(!this.connectEdge(c,e)||!this.clipEdge(c,e)||(b(c.va.x-c.vb.x)<1e-9&&b(c.va.y-c.vb.y)<1e-9)){c.va=c.vb=null;
-a.splice(d,1);}}};Voronoi.prototype.closeCells=function(p){var g=p.xl,d=p.xr,m=p.yt,j=p.yb,q=this.cells,a=q.length,n,e,o,c,b,l,k,i,f,h=Math.abs;
-while(a--){n=q[a];if(!n.prepareHalfedges()){continue}if(!n.closeMe){continue}o=n.halfedges;c=o.length;e=0;while(e<c){l=o[e].getEndpoint();
-i=o[(e+1)%c].getStartpoint();if(h(l.x-i.x)>=1e-9||h(l.y-i.y)>=1e-9){switch(true){case this.equalWithEpsilon(l.x,g)&&this.lessThanWithEpsilon(l.y,j):f=this.equalWithEpsilon(i.x,g);
-k=this.createVertex(g,f?i.y:j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
-if(f){break}l=k;case this.equalWithEpsilon(l.y,j)&&this.lessThanWithEpsilon(l.x,d):f=this.equalWithEpsilon(i.y,j);k=this.createVertex(f?i.x:d,j);
-b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}l=k;case this.equalWithEpsilon(l.x,d)&&this.greaterThanWithEpsilon(l.y,m):f=this.equalWithEpsilon(i.x,d);
-k=this.createVertex(d,f?i.y:m);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
-if(f){break}l=k;case this.equalWithEpsilon(l.y,m)&&this.greaterThanWithEpsilon(l.x,g):f=this.equalWithEpsilon(i.y,m);k=this.createVertex(f?i.x:g,m);
-b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}l=k;f=this.equalWithEpsilon(i.x,g);
-k=this.createVertex(g,f?i.y:j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
-if(f){break}l=k;f=this.equalWithEpsilon(i.y,j);k=this.createVertex(f?i.x:d,j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));
-c++;if(f){break}l=k;f=this.equalWithEpsilon(i.x,d);k=this.createVertex(d,f?i.y:m);b=this.createBorderEdge(n.site,l,k);e++;
-o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}default:throw "Voronoi.closeCells() > this makes no sense!"
-}}e++;}n.closeMe=false;}};Voronoi.prototype.quantizeSites=function(c){var b=this.ε,d=c.length,a;while(d--){a=c[d];a.x=Math.floor(a.x/b)*b;
-a.y=Math.floor(a.y/b)*b;}};Voronoi.prototype.recycle=function(a){if(a){if(a instanceof this.Diagram){this.toRecycle=a;}else {throw "Voronoi.recycleDiagram() > Need a Diagram object."
-}}};Voronoi.prototype.compute=function(i,j){var d=new Date();this.reset();if(this.toRecycle){this.vertexJunkyard=this.vertexJunkyard.concat(this.toRecycle.vertices);
-this.edgeJunkyard=this.edgeJunkyard.concat(this.toRecycle.edges);this.cellJunkyard=this.cellJunkyard.concat(this.toRecycle.cells);
-this.toRecycle=null;}var h=i.slice(0);h.sort(function(n,m){var o=m.y-n.y;if(o){return o}return m.x-n.x});var b=h.pop(),l=0,f,e,k=this.cells,a;
-for(;;){a=this.firstCircleEvent;if(b&&(!a||b.y<a.y||(b.y===a.y&&b.x<a.x))){if(b.x!==f||b.y!==e){k[l]=this.createCell(b);b.voronoiId=l++;
-this.addBeachsection(b);e=b.y;f=b.x;}b=h.pop();}else {if(a){this.removeBeachsection(a.arc);}else {break}}}this.clipEdges(j);this.closeCells(j);
-var c=new Date();var g=new this.Diagram();g.cells=this.cells;g.edges=this.edges;g.vertices=this.vertices;g.execTime=c.getTime()-d.getTime();
-this.reset();return g};
+// Original src: htt
+const BITS = 3;
+const TEXTURE_WIDTH = 256;
 
+/**
+ * Prepares texture for storing positions and normals for spline
+ */
+function initSplineTexture(renderer) {
+	if ( ! renderer.extensions.get( "OES_texture_float" ) ) {
+		console.log("No OES_texture_float support for float textures.");
+	}
 
-function distance(a, b) {
-  var dx = a.x - b.x,
-    dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
+	if ( renderer.capabilities.maxVertexTextures === 0 ) {
+		console.log("No support for vertex shader textures.");
+	}
+
+	const height = 4;
+
+	const dataArray = new Float32Array( TEXTURE_WIDTH * height * BITS );
+	const dataTexture = new DataTexture(
+		dataArray,
+		TEXTURE_WIDTH,
+		height,
+		RGBFormat,
+		FloatType
+	);
+
+	dataTexture.wrapS = RepeatWrapping;
+	dataTexture.wrapY = RepeatWrapping;
+	dataTexture.magFilter = LinearFilter;
+	dataTexture.needsUpdate = true;
+
+	return dataTexture;
 }
 
-function cellArea(cell) {
-  var area = 0,
-    halfedges = cell.halfedges,
-    iHalfedge = halfedges.length,
-    halfedge,
-    p1,
-    p2;
-  while (iHalfedge--) {
-    halfedge = halfedges[iHalfedge];
-    p1 = halfedge.getStartpoint();
-    p2 = halfedge.getEndpoint();
-    area += p1.x * p2.y;
-    area -= p1.y * p2.x;
-  }
-  area /= 2;
-  return area;
+function setTextureValue(texture, index, x, y, z, o) {
+	const image = texture.image;
+	// eslint-disable-next-line no-unused-vars
+	const { width, height, data } = image;
+	const i = BITS * width * (o || 0);
+	data[index * BITS + i + 0] = x;
+	data[index * BITS + i + 1] = y;
+	data[index * BITS + i + 2] = z;
 }
 
-function cellCentroid(cell) {
-  var x = 0,
-    y = 0,
-    halfedges = cell.halfedges,
-    iHalfedge = halfedges.length,
-    halfedge,
-    v,
-    p1,
-    p2;
-  while (iHalfedge--) {
-    halfedge = halfedges[iHalfedge];
-    p1 = halfedge.getStartpoint();
-    p2 = halfedge.getEndpoint();
-    v = p1.x * p2.y - p2.x * p1.y;
-    x += (p1.x + p2.x) * v;
-    y += (p1.y + p2.y) * v;
-  }
-  v = cellArea(cell) * 6;
-  return { x: x / v, y: y / v };
+function updateSplineTexture(curve, texture, uniforms) {
+
+	curve.arcLengthDivisions = 200;
+	curve.updateArcLengths();
+	const splineLen = curve.getLength();
+	// const pathSegment = len / splineLen // should clamp max to 1
+
+	// updateUniform('spineOffset', 0);
+	// updateUniform('pathSegment', pathSegment);
+	// uniforms['pathSegment'] = 1;
+	uniforms['spineLength'].value = splineLen;
+
+	var splineCurve = curve;
+	// uniform chordal centripetal
+	var points = splineCurve.getSpacedPoints(TEXTURE_WIDTH - 1);
+	// getPoints() - unequal arc lengths
+	var frenetFrames = splineCurve.computeFrenetFrames(TEXTURE_WIDTH - 1, true);
+	// console.log(frenetFrames);
+
+	// console.log('points', points);
+	for (var i = 0; i < TEXTURE_WIDTH; i++) {
+		var pt = points[i];
+		setTextureValue(texture, i, pt.x, pt.y, pt.z, 0);
+		pt = frenetFrames.tangents[i];
+		setTextureValue(texture, i, pt.x, pt.y, pt.z, 1);
+		pt = frenetFrames.normals[i];
+		setTextureValue(texture, i, pt.x, pt.y, pt.z, 2);
+		pt = frenetFrames.binormals[i];
+		setTextureValue(texture, i, pt.x, pt.y, pt.z, 3);
+	}
+
+	texture.needsUpdate = true;
 }
 
-function relaxCells(cells) {
-  var iCell = cells.length,
-    cell,
-    site,
-    sites = [],
-    rn,
-    dist;
-  var p = (1 / iCell) * 0.1;
-  while (iCell--) {
-    cell = cells[iCell];
-    rn = Math.random();
-    // probability of apoptosis
-    if (rn < p) {
-      continue;
-    }
-    site = cellCentroid(cell);
-    dist = distance(site, cell.site);
-    // don't relax too fast
-    if (dist > 2) {
-      site.x = (site.x + cell.site.x) / 2;
-      site.y = (site.y + cell.site.y) / 2;
-    }
-    // probability of mytosis
-    if (rn > 1 - p) {
-      dist /= 2;
-      sites.push({
-        x: site.x + (site.x - cell.site.x) / dist,
-        y: site.y + (site.y - cell.site.y) / dist
-      });
-    }
-    sites.push(site);
-  }
-  return sites;
+function getUniforms(splineTexture) {
+	const uniforms = {
+		texture: { value: splineTexture },
+		pathOffset: { type: 'f', value: 0 }, // time of path curve
+		pathSegment: { type: 'f', value: 1 }, // fractional length of path
+		spineOffset: { type: 'f', value: 161 },
+		spineLength: { type: 'f', value: 400 },
+		flow: { type: 'i', value: 1 },
+	};
+	return uniforms;
 }
 
-const depthMaterial = new MeshBasicMaterial({
-  colorWrite: false
-});
+function modifyShader( material, uniforms ) {
+	if (material.__ok) return;
+	material.__ok = true;
 
-const target = new WebGLRenderTarget(100, 100);
-target.texture.format = RGBFormat;
-target.texture.generateMipmaps = false;
-target.stencilBuffer = false;
-target.depthBuffer = true;
-target.depthTexture = new DepthTexture();
-target.depthTexture.type = UnsignedShortType;
+	material.onBeforeCompile = ( shader ) => {
 
-function lerp(p1, p2, t = 0.5) {
-  return {
-    x: p1.x + (p2.x - p1.x) * t,
-    y: p1.y + (p2.y - p1.y) * t,
-  }
+		if (shader.__modified) return;
+		shader.__modified = true;
+
+		Object.assign(shader.uniforms, uniforms);
+
+		const vertexShader = `
+		uniform sampler2D texture;
+
+		uniform float pathOffset;
+		uniform float pathSegment;
+		uniform float spineOffset;
+		uniform float spineLength;
+		uniform int flow;
+
+		float textureLayers = 4.; // look up takes (i + 0.5) / textureLayers
+
+		${shader.vertexShader}
+		`.replace(
+		'#include <defaultnormal_vertex>',
+		`
+		vec4 worldPos = modelMatrix * vec4(position, 1.);
+
+		bool bend = flow > 0;
+		float spinePortion = bend ? (worldPos.x + spineOffset) / spineLength : 0.;
+		float xWeight = bend ? 0. : 1.;
+		float mt = spinePortion * pathSegment + pathOffset;
+
+		vec3 spinePos = texture2D(texture, vec2(mt, (0.5) / textureLayers)).xyz;
+		vec3 a = texture2D(texture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
+		vec3 b = texture2D(texture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
+		vec3 c = texture2D(texture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
+		mat3 basis = mat3(a, b, c);
+
+		vec3 transformed = basis
+			* vec3(worldPos.x * xWeight, worldPos.y * 1., worldPos.z * 1.)
+			+ spinePos;
+
+		vec3 transformedNormal = normalMatrix * (basis * objectNormal);
+		`
+	).replace(
+		'#include <begin_vertex>',
+		''
+	).replace(
+		'#include <project_vertex>',
+		`
+			vec4 mvPosition = viewMatrix * vec4( transformed, 1.0 );
+			// vec4 mvPosition = viewMatrix * worldPos;
+			gl_Position = projectionMatrix * mvPosition;
+			`
+	);
+
+		shader.vertexShader = vertexShader;
+	};
+
+
+	return uniforms;
 }
-
-function generateCausticCanvasTexture(nPoints) {
-  const voronoi = new Voronoi();
-  const originalSites = [];
-  const width = 512;
-  const height = 512;
-  const targetGap = width / 55;
-  const bbox = { xl: -width, xr: width * 2, yt: -height, yb: height * 2 }; // xl is x-left, xr is x-right, yt is y-top, and yb is y-bottom
-  for (let i = 0; i < nPoints - 3; i++) originalSites.push({
-    x: Math.random() * width,
-    y: Math.random() * height,
-  });
-  originalSites.push(...relaxCells(voronoi.compute(originalSites.splice(0), bbox).cells));
-  for (let i = 0; i < 3; i++) originalSites.push({
-    x: Math.random() * width,
-    y: Math.random() * height,
-  });
-  const sites = [];
-  for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-      for (const site of originalSites) {
-        sites.push({
-          x: site.x + width * i,
-          y: site.y + height * j,
-        });
-      }
-    }
-  }
-  const shapes = voronoi.compute(sites, bbox);
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
-  svg.setAttribute('xmlns', "http://www.w3.org/2000/svg");
-  svg.setAttribute('viewBox', `${0} ${0} ${width} ${height}`);
-  svg.setAttribute('style', `width:${width}px; height:${height}px; position: absolute;`);
-  svg.setAttribute('width', width);
-  svg.setAttribute('height', height);
-  svg.innerHTML = `
-    <rect x="0" y="0" width="100%" height="100%" fill="white" />
-    <defs>
-        <filter id="goo">
-            <feGaussianBlur in="SourceGraphic" result="blur" stdDeviation="10"></feGaussianBlur>
-            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"></feColorMatrix>
-            <feComposite in="SourceGraphic" in2="goo" operator="atop"></feComposite>
-        </filter>
-        <filter id="goo2">
-            <feGaussianBlur in="SourceGraphic" result="blur" stdDeviation="4"></feGaussianBlur>
-            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -8" result="goo"></feColorMatrix>
-            <feComposite in="SourceGraphic" in2="goo" operator="atop"></feComposite>
-        </filter>
-        <filter id="displacementFilter">
-        <feTurbulence type="turbulence" baseFrequency="0.025" stitchTiles="stitch"
-            numOctaves="1" result="turbulence"/>
-        <feGaussianBlur in="turbulence" result="blur" stdDeviation="10"></feGaussianBlur>
-        <feDisplacementMap in2="blur" in="SourceGraphic"
-            scale="${width / 13}" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-    </defs>
-    <g style="filter: url(#goo2);"></g>
-    `;
-  const g = svg.querySelector('g');
-  for (const cell of shapes.cells) {
-    if (!cell.halfedges[0]) continue;
-    const p = document.createElementNS("http://www.w3.org/2000/svg", 'polygon');
-    const vertices = [];
-    vertices.push(cell.halfedges[0].getStartpoint());
-    for (const halfEdge of cell.halfedges) {
-      vertices.push(halfEdge.getEndpoint());
-    }
-    p.setAttribute('points', vertices.map(vertex => {
-      const t = 1 - targetGap / Math.max(distance(cell.site, vertex), targetGap);
-      return lerp(cell.site, vertex, t)
-    }).map(vertex => `${vertex.x},${vertex.y}`).join(' '));
-    p.setAttribute('style', "fill:black;stroke-width:0;filter:url(#goo);");
-    g.appendChild(p);
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const canvasTexture = new CanvasTexture(canvas);
-  canvasTexture.wrapS = canvasTexture.wrapT = RepeatWrapping;
-  canvasTexture.anisotropy = 2;
-  const img = document.createElement('img');
-  const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  img.onload = function () {
-    canvas.getContext('2d').drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    canvasTexture.needsUpdate = true;
-  };
-  img.src = url;
-
-  return canvasTexture;
-}
-
-const time = { value: 0.1 };
-const uniforms = {
-  depth_map: {value: target.depthTexture},
-  map: {value: generateCausticCanvasTexture(15)},
-  camera_near: {value: camera.near},
-  camera_far: {value: camera.far},
-  uTime: time,
-  color_foam: {value: new Color('lavenderblush')},
-  color_shallow: {value: new Color('lavenderblush')},
-  color_deep: {value: new Color('darkblue')},
-  opacity_shallow: { value: 0.8 },
-  opacity_deep: { value: 1.0 },
-  opacity_foam: { value: 0.8 },
-  repeat: { value: 500 },
-  max_depth: { value: 3 }
-};
-
-rafCallbacks.add(t => time.value = t);
-
-const waterMat = new ShaderMaterial({
-  vertexShader: `
-  varying vec2 vUv;
-  varying vec4 viewZ;
-  varying vec4 screenSpace;
-  uniform float uTime;
-  uniform float repeat;
-
-  void main() {
-    #include <beginnormal_vertex>
-    #include <defaultnormal_vertex>
-    #include <begin_vertex>
-
-    float time = uTime * 0.001;
-    vUv = uv;
-    transformed.z += 0.04*sin(time/4.1) + 0.04*(sin(time/1.8 + repeat*uv.y) + cos(time/2.0 + repeat*uv.x));
-    transformedNormal = cross(transformedNormal, normalize(vec3(
-      cos(time/1.8 + repeat*uv.y),
-      -sin(time/2.0 + repeat*uv.x),
-      1.0
-    )));
-
-    viewZ = -(modelViewMatrix * vec4(transformed, 1.));
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
-    screenSpace = gl_Position;
-  }
-  `.trim(),
-
-  fragmentShader: `
-  #include <packing>
-  varying vec2 vUv;
-  varying vec4 viewZ;
-  varying vec4 screenSpace;
-  uniform sampler2D depth_map;
-  uniform sampler2D map;
-  uniform float camera_near;
-  uniform float camera_far;
-  uniform float uTime;
-  uniform float repeat;
-  uniform vec3 color_foam;
-  uniform vec3 color_shallow;
-  uniform vec3 color_deep;
-  uniform float opacity_shallow;
-  uniform float opacity_deep;
-  uniform float opacity_foam;
-  uniform float max_depth;
-
-  float readDepth( sampler2D depthSampler, vec2 coord ) {
-    float fragCoordZ = texture2D( depthSampler, coord ).x;
-    float viewZ = perspectiveDepthToViewZ( fragCoordZ, camera_near, camera_far );
-    return viewZToOrthographicDepth( viewZ, camera_near, camera_far );
-  }
-
-  void main() {
-    float time = uTime * 0.001;
-    float distanceDark = 8.0;
-    float distanceLight = 12.0;
-    float max_depth = 3.0;
-
-    // Depth of point on ocean surface
-    float depth2 = viewZ.z;
-
-    // XY position in screenspace
-    vec2 samplePoint = 0.5+0.5*screenSpace.xy/screenSpace.w;
-    vec2 samplePointOffset = samplePoint + (0.005/(depth2*depth2))*vec2(sin(time + 30.0*repeat*vUv.x),cos(time + 30.0*repeat*vUv.y));
-
-    // Normalised depth of scene betweet 0 and 1
-    float depth = readDepth( depth_map, samplePoint );
-
-    // Depth of scene in range of camera
-    float depth1 = mix( camera_near, camera_far, depth);
-
-    vec4 col1 = vec4( color_shallow, opacity_shallow );
-    vec4 col2 = vec4( color_deep, opacity_deep );
-
-    vec4 darkFoam = 1.0 - 0.2*smoothstep(distanceDark, 0.0,depth2)*texture2D(map, vUv * repeat*1.25);
-    vec4 lightFoam = vec4(color_foam,1.0) * texture2D(map, vUv * repeat +
-      (1.0/repeat) * vec2(sin(time*2.0+repeat*10.0*vUv.x), cos(time*2.0+repeat*10.0*vUv.y)) +
-      (2.0/repeat) * vec2(sin(repeat*20.0*vUv.x), cos(repeat*20.0*vUv.y))
-    ) * 0.5 * smoothstep(distanceLight, 0.0,depth2);
-    lightFoam.a = lightFoam.r;
-
-    if (depth1 - depth2 < 0.2) {
-      gl_FragColor = vec4(color_foam,opacity_foam * smoothstep(0.0,0.1,depth1 - depth2));
-    } else {
-      vec4 depthCol;
-      float transition = smoothstep(0.2 , 0.3, depth1 - depth2);
-      float refracdepth_map = mix( camera_near, camera_far, readDepth(depth_map, samplePointOffset));
-
-      depthCol = 1.5 * mix(0.5 * col1, col2, smoothstep(0.0, max_depth, refracdepth_map - depth2));
-
-      // Don't ripple if the sampled texel is in front of the plane
-      if (depth2 > refracdepth_map) {
-        depthCol = 1.5 * mix(0.5 * col1, col2, smoothstep(0.0, max_depth, depth1 - depth2));
-      }
-      
-      gl_FragColor = mix(vec4(color_foam,opacity_foam), depthCol * darkFoam, transition);
-    }
-
-    if (depth1 - depth2 > 0.1) {
-      gl_FragColor += lightFoam;
-    }
-  }`.trim(),
-  uniforms,
-  depthWrite: false
-});
-waterMat.transparent = true;
-
-const water = new Mesh(
-  new PlaneGeometry(500, 500, 50, 50),
-  waterMat
-);
-water.rotation.x = -Math.PI / 2;
-water.position.y = 0.5;
-water.name = 'water';
-scene.add(water);
-
-const debug = new Mesh(
-  new PlaneGeometry(),
-  new MeshBasicMaterial({
-    map: target.texture
-  })
-);
-debug.position.set(0.5,0.5,-3);
-camera.add(debug);
-
-const temp = new Vector2();
-water.onBeforeRender = function(renderer, scene, camera) {
-
-  renderer.setRenderTarget( target );
-  
-  // In case the scene has changed size update the uniform and the render target size.
-  renderer.getDrawingBufferSize(temp);
-  target.setSize( 512, 512 ); // temp.x, temp.y
-
-  this.visible = false;
-
-  // This material doesn't write color
-  // scene.overrideMaterial = depthMaterial;
-
-  renderer.render( scene, camera );
-
-  scene.overrideMaterial = null;
-  renderer.setRenderTarget( null );
-
-  this.visible = true;
-};
-
-scene.add(water);
 
 const loader = new GLTFLoader();
 
-// Red target on the floor
-const targetTexture = new TextureLoader().load('./assets/target.png');
-const target$1 = new Mesh(
-    new PlaneGeometry(0.5, 0.5, 1, 1),
-    new MeshBasicMaterial({
-        map: targetTexture,
-        blending: AdditiveBlending,
-        color: 0x660000,
-        transparent: true
-    })
-);
-target$1.position.z = -5;
-target$1.position.y = 0.01;
-target$1.rotation.x = -Math.PI/2;
-scene.add(target$1);
-
-// Debugging 
+// Debugging
 
 const canvas$1 = document.createElement('canvas');
 const canvasTexture = new CanvasTexture(canvas$1);
@@ -62909,13 +62596,13 @@ canvas$1.width = 1024;
 canvas$1.height = 256;
 const ctx = canvas$1.getContext('2d');
 function writeText(text) {
-    if (typeof text !== 'string') text = JSON.stringify(text,null,2);
-    ctx.font = "120px fantasy";
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas$1.width, canvas$1.height);
-    ctx.fillStyle = 'white';
-    text.split('\n').forEach((str, i) => ctx.fillText(str, 0, (i+1)*120));
-    canvasTexture.needsUpdate = true;
+	if (typeof text !== 'string') text = JSON.stringify(text,null,2);
+	ctx.font = "120px fantasy";
+	ctx.fillStyle = 'black';
+	ctx.fillRect(0, 0, canvas$1.width, canvas$1.height);
+	ctx.fillStyle = 'white';
+	text.split('\n').forEach((str, i) => ctx.fillText(str, 0, (i+1)*120));
+	canvasTexture.needsUpdate = true;
 }
 
 const geometry = new PlaneGeometry( 0.3 * canvas$1.width/1024, 0.3 * canvas$1.height/1024 );
@@ -62928,24 +62615,84 @@ controller1.add( consolePlane );
 writeText('hi');
 
 gamepad.addEventListener('gamepadInteraction', function (event) {
-    writeText(`${event.detail.type} ${event.detail.value}`);
+	writeText(`${event.detail.type} ${event.detail.value}`);
 });
 
-(async function () {
+const modelsPromise = (async function () {
 
-    // Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
-    const {scene: gltfScene} = await new Promise(resolve => loader.load('./assets/forest.glb', resolve));
-    const trees = gltfScene.children[0];
-    trees.position.z = -5;
-    trees.position.y = 2.5;
-    trees.scale.multiplyScalar(10);
-    trees.traverse(o => {
-        if (o.material) {
-            o.material.side = DoubleSide;
-            o.material.depthWrite = true;
-        }
-    });
-    scene.add(trees);
+	// Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
+	const {scene: treesScene} = await new Promise(resolve => loader.load('./assets/forest.glb', resolve));
+	const trees = treesScene.children[0];
+	trees.position.z = 0;
+	trees.position.y = 2.5;
+	trees.scale.multiplyScalar(10);
+	trees.traverse(o => {
+		if (o.material) {
+			o.material.side = DoubleSide;
+			o.material.depthWrite = true;
+		}
+	});
+	scene.add(trees);
+
+	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
+	const { scene: fish } = await new Promise(resolve => loader.load('./assets/fish.glb', resolve));
+	fish.position.y = 0.15;
+	fish.children[0].children[0].children[0].children[0].children[0].scale.set(0.2, 0.2, 0.2);
+	fish.children[0].children[0].children[0].children[0].children[0].position.set(0,-0.18,0);
+	fish.children[0].children[0].children[0].children[0].children[0].rotation.set(Math.PI/2,0,Math.PI/2);
+	fish.traverse(o => {
+		if (o.material) {
+			o.material.side = DoubleSide;
+			o.material.depthWrite = true;
+		}
+	});
+	window.fish = fish;
+	scene.add(fish);
+
+	return {fish, trees};
+}());
+
+(async function generatePath() {
+	//Create a closed wavey loop
+	const curve = new CatmullRomCurve3( [
+		new Vector3( -1, 0.15, 1 ),
+		new Vector3( -1, 0.15, -1 ),
+		new Vector3( 0, 0.15, 0 ),
+		new Vector3( 1, 0.15, -1 ),
+		new Vector3( 2, 0.15, 2 )
+	] );
+
+	curve.curveType = 'centripetal';
+	curve.closed = true;
+
+	const points = curve.getPoints( 50 );
+	const geometry = new BufferGeometry().setFromPoints( points );
+
+	const material = new LineBasicMaterial( { color : 0x00ff00 } );
+
+	// Create the final object to add to the scene
+	const line = new Line( geometry, material );
+
+	scene.add(line);
+
+	const splineTexure = initSplineTexture(renderer);
+	const uniforms = getUniforms(splineTexure);
+	updateSplineTexture(curve, splineTexure, uniforms);
+
+	const {fish} = await modelsPromise;
+	fish.traverse( function ( child ) {
+		if ( child instanceof Mesh ) {
+			modifyShader( child.material, uniforms );
+		}
+	});
+
+	window.uniforms = uniforms;
+
+	const speedPerTick = 0.05 / curve.getLength();
+
+	rafCallbacks.add(function () {
+		uniforms.pathOffset.value += speedPerTick;
+	});
 }());
 
 window.renderer = renderer;
