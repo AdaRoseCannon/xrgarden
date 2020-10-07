@@ -1,6 +1,7 @@
 // Original src: htt
 const BITS = 3;
 const TEXTURE_WIDTH = 256;
+const TEXTURE_HEIGHT = 4;
 
 import {
 	DataTexture,
@@ -22,13 +23,11 @@ export function initSplineTexture(renderer) {
 		console.log("No support for vertex shader textures.");
 	}
 
-	const height = 4;
-
-	const dataArray = new Float32Array( TEXTURE_WIDTH * height * BITS );
+	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * BITS );
 	const dataTexture = new DataTexture(
 		dataArray,
 		TEXTURE_WIDTH,
-		height,
+		TEXTURE_HEIGHT,
 		RGBFormat,
 		FloatType
 	);
@@ -44,7 +43,7 @@ export function initSplineTexture(renderer) {
 function setTextureValue(texture, index, x, y, z, o) {
 	const image = texture.image;
 	// eslint-disable-next-line no-unused-vars
-	const { width, height, data } = image;
+	const { data, width } = image;
 	const i = BITS * width * (o || 0);
 	data[index * BITS + i + 0] = x;
 	data[index * BITS + i + 1] = y;
