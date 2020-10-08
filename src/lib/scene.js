@@ -84,9 +84,6 @@ skymaterial.onBeforeCompile = function (shader) {
 	shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
     #include <common>
     #define USE_UV
-    float random (vec2 st) {
-        return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
-    }
     `);
 	shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
         vec4 col1 = vec4( 249, 229, 180, 255 ) / 255.0;
@@ -98,10 +95,10 @@ skymaterial.onBeforeCompile = function (shader) {
         } else {
             col1 = vec4(0.6,0.6,0.6,1.0);
 		}
-		vec4 random4 = vec4((random(vUv)-0.5) * (1.4 / 255.0));
-        diffuseColor *= mix(col1, col2, mixAmount) + random4;
+        diffuseColor *= mix(col1, col2, mixAmount);
     `);
 };
+skymaterial.dithering = true;
 const skysphere = new Mesh(skygeometry, skymaterial);
 skysphere.name = 'skysphere';
 scene.add(skysphere);
@@ -126,8 +123,7 @@ const water = new Mesh(
 	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
 	new MeshPhongMaterial({
 		normalMap: waterTexture,
-		metalness: 1,
-		roughness: 0,
+		shininess: 1,
 		color: 0x8ab39f,
 		transparent: true,
 		opacity: 0.4
@@ -163,5 +159,6 @@ export {
 	scene,
 	rafCallbacks,
 	cameraGroup,
-	camera
+	camera,
+	context
 }

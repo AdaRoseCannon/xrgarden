@@ -7,21 +7,15 @@ import {
 	DataTexture,
 	RGBFormat,
 	FloatType,
-	RepeatWrapping
+	RepeatWrapping,
+	Mesh,
+	DoubleSide
 } from 'three';
 
 /**
  * Prepares texture for storing positions and normals for spline
  */
-export function initSplineTexture(renderer) {
-	if ( ! renderer.extensions.get( "OES_texture_float" ) ) {
-		console.log("No OES_texture_float support for float textures.");
-	}
-
-	if ( renderer.capabilities.maxVertexTextures === 0 ) {
-		console.log("No support for vertex shader textures.");
-	}
-
+export function initSplineTexture() {
 	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * BITS );
 	const dataTexture = new DataTexture(
 		dataArray,
@@ -40,7 +34,6 @@ export function initSplineTexture(renderer) {
 
 function setTextureValue(texture, index, x, y, z, o) {
 	const image = texture.image;
-	// eslint-disable-next-line no-unused-vars
 	const { data } = image;
 	const i = BITS * TEXTURE_WIDTH * (o || 0);
 	data[index * BITS + i + 0] = x;
@@ -48,26 +41,14 @@ function setTextureValue(texture, index, x, y, z, o) {
 	data[index * BITS + i + 2] = z;
 }
 
-export function updateSplineTexture(curve, texture, uniforms) {
+export function updateSplineTexture(texture, splineCurve) {
 
-	curve.arcLengthDivisions = 200;
-	curve.updateArcLengths()
-	const splineLen = curve.getLength();
-	// const pathSegment = len / splineLen // should clamp max to 1
+	splineCurve.arcLengthDivisions = 200;
+	splineCurve.updateArcLengths();
 
-	// updateUniform('spineOffset', 0);
-	// updateUniform('pathSegment', pathSegment);
-	// uniforms['pathSegment'] = 1;
-	uniforms['spineLength'].value = splineLen;
-
-	var splineCurve = curve;
-	// uniform chordal centripetal
 	var points = splineCurve.getSpacedPoints(TEXTURE_WIDTH - 1);
-	// getPoints() - unequal arc lengths
 	var frenetFrames = splineCurve.computeFrenetFrames(TEXTURE_WIDTH - 1, true);
-	// console.log(frenetFrames);
 
-	// console.log('points', points);
 	for (var i = 0; i < TEXTURE_WIDTH; i++) {
 		var pt = points[i];
 		setTextureValue(texture, i, pt.x, pt.y, pt.z, 0);
@@ -94,7 +75,9 @@ export function getUniforms(splineTexture) {
 	return uniforms;
 }
 
-export function modifyShader( material, uniforms ) {
+
+export function modifyShader(material, uniforms) {
+	uniforms = uniforms || getUniforms();
 	if (material.__ok) return;
 	material.__ok = true;
 
@@ -153,6 +136,39 @@ export function modifyShader( material, uniforms ) {
 		shader.vertexShader = vertexShader
 	}
 
-
 	return uniforms;
+}
+
+/**
+ * Ideally this would perform the material changes before cloning
+ * so that they all share the same material making it much more
+ * efficient but as far as I can tell there is currently no way
+ * of doing that with beforeCompile.
+ */
+export class Flow {
+	constructor(mesh) {
+		const obj3D = mesh.clone();
+		const splineTexure = initSplineTexture();
+		const uniforms = getUniforms(splineTexure);
+		obj3D.traverse(function (child) {
+			if (child instanceof Mesh) {
+				child.material = child.material.clone();
+				modifyShader( child.material, uniforms );
+			}
+		});
+
+		this.object3D = obj3D;
+		this.splineTexure = splineTexure;
+		this.uniforms = uniforms;
+	}
+
+	addToCurve(curve) {
+		const curveLength = curve.getLength();
+		this.uniforms.spineLength.value = curveLength;
+		updateSplineTexture(this.splineTexure, curve);
+	}
+
+	moveAlongCurve(amount) {
+		this.uniforms.pathOffset.value += amount;
+	}
 }

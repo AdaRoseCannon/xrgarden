@@ -14,10 +14,7 @@ import {
 } from './lib/controllers/gamepad.js';
 
 import {
-	initSplineTexture,
-	modifyShader,
-	updateSplineTexture,
-	getUniforms
+	Flow
 } from './lib/flow.js';
 
 import {
@@ -85,62 +82,50 @@ const modelsPromise = (async function () {
 
 	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
 	const { scene: fish } = await new Promise(resolve => loader.load('./assets/fish.glb', resolve));
-	fish.position.y = 0.15;
-	fish.children[0].children[0].children[0].children[0].children[0].scale.set(0.2, 0.2, 0.2);
-	fish.children[0].children[0].children[0].children[0].children[0].position.set(0,-0.18,0);
-	fish.children[0].children[0].children[0].children[0].children[0].rotation.set(Math.PI/2,0,Math.PI/2);
-	fish.traverse(o => {
-		if (o.material) {
-			o.material.side = DoubleSide;
-			o.material.depthWrite = true;
-		}
-	});
-	window.fish = fish;
-	scene.add(fish);
+	// fish.position.y = 0.15;
+	fish.children[0].rotation.set(Math.PI, -Math.PI/2, 0);
+	fish.children[0].scale.multiplyScalar(0.6);
+	fish.children[0].position.y += 0.1;
 
-	return {fish, trees};
+	class Fish extends Flow {
+		constructor() {
+			super(fish.children[0]);
+		}
+	}
+
+	return {Fish, trees};
 }());
 
 (async function generatePath() {
-	//Create a closed wavey loop
-	const curve = new CatmullRomCurve3( [
+
+	const curve = new CatmullRomCurve3([
 		new Vector3( -1, 0.15, 1 ),
 		new Vector3( -1, 0.15, -1 ),
 		new Vector3( 0, 0.15, 0 ),
 		new Vector3( 1, 0.15, -1 ),
 		new Vector3( 2, 0.15, 2 )
-	] );
-
+	]);
 	curve.curveType = 'centripetal';
 	curve.closed = true;
-
 	const points = curve.getPoints( 50 );
-	const geometry = new BufferGeometry().setFromPoints( points );
-
-	const material = new LineBasicMaterial( { color : 0x00ff00 } );
-
-	// Create the final object to add to the scene
-	const line = new Line( geometry, material );
-
+	const line = new Line( new BufferGeometry().setFromPoints( points ), new LineBasicMaterial( { color : 0x00ff00 } ) );
 	scene.add(line);
 
-	const splineTexure = initSplineTexture(renderer);
-	const uniforms = getUniforms(splineTexure);
-	updateSplineTexture(curve, splineTexure, uniforms);
+	const { Fish } = await modelsPromise;
+	const fishes = [];
 
-	const {fish} = await modelsPromise;
-	fish.traverse( function ( child ) {
-		if ( child instanceof Mesh ) {
-			modifyShader( child.material, uniforms );
-		}
-	});
-
-	window.uniforms = uniforms;
+	const N = 3;
+	for (let i = 0; i < N; i++) {
+		const fish = new Fish();
+		fish.addToCurve(curve);
+		fish.moveAlongCurve(i/N);
+		scene.add(fish.object3D);
+		fishes.push(fish);
+	}
 
 	const speedPerTick = 0.05 / curve.getLength();
-
 	rafCallbacks.add(function () {
-		uniforms.pathOffset.value += speedPerTick;
+		fishes.forEach(fish => fish.moveAlongCurve(speedPerTick))
 	});
 }())
 

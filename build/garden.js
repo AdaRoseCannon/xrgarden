@@ -58113,10 +58113,11 @@ skymaterial.onBeforeCompile = function (shader) {
             mixAmount = sqrt(newY)*2.0;
         } else {
             col1 = vec4(0.6,0.6,0.6,1.0);
-        }
+		}
         diffuseColor *= mix(col1, col2, mixAmount);
     `);
 };
+skymaterial.dithering = true;
 const skysphere = new Mesh(skygeometry, skymaterial);
 skysphere.name = 'skysphere';
 scene.add(skysphere);
@@ -58141,8 +58142,7 @@ const water = new Mesh(
 	new PlaneGeometry(sceneRadius*2,sceneRadius*2,50,50),
 	new MeshPhongMaterial({
 		normalMap: waterTexture,
-		metalness: 1,
-		roughness: 0,
+		shininess: 1,
 		color: 0x8ab39f,
 		transparent: true,
 		opacity: 0.4
@@ -62434,15 +62434,7 @@ const TEXTURE_HEIGHT = 4;
 /**
  * Prepares texture for storing positions and normals for spline
  */
-function initSplineTexture(renderer) {
-	if ( ! renderer.extensions.get( "OES_texture_float" ) ) {
-		console.log("No OES_texture_float support for float textures.");
-	}
-
-	if ( renderer.capabilities.maxVertexTextures === 0 ) {
-		console.log("No support for vertex shader textures.");
-	}
-
+function initSplineTexture() {
 	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * BITS );
 	const dataTexture = new DataTexture(
 		dataArray,
@@ -62461,7 +62453,6 @@ function initSplineTexture(renderer) {
 
 function setTextureValue(texture, index, x, y, z, o) {
 	const image = texture.image;
-	// eslint-disable-next-line no-unused-vars
 	const { data } = image;
 	const i = BITS * TEXTURE_WIDTH * (o || 0);
 	data[index * BITS + i + 0] = x;
@@ -62469,26 +62460,14 @@ function setTextureValue(texture, index, x, y, z, o) {
 	data[index * BITS + i + 2] = z;
 }
 
-function updateSplineTexture(curve, texture, uniforms) {
+function updateSplineTexture(texture, splineCurve) {
 
-	curve.arcLengthDivisions = 200;
-	curve.updateArcLengths();
-	const splineLen = curve.getLength();
-	// const pathSegment = len / splineLen // should clamp max to 1
+	splineCurve.arcLengthDivisions = 200;
+	splineCurve.updateArcLengths();
 
-	// updateUniform('spineOffset', 0);
-	// updateUniform('pathSegment', pathSegment);
-	// uniforms['pathSegment'] = 1;
-	uniforms['spineLength'].value = splineLen;
-
-	var splineCurve = curve;
-	// uniform chordal centripetal
 	var points = splineCurve.getSpacedPoints(TEXTURE_WIDTH - 1);
-	// getPoints() - unequal arc lengths
 	var frenetFrames = splineCurve.computeFrenetFrames(TEXTURE_WIDTH - 1, true);
-	// console.log(frenetFrames);
 
-	// console.log('points', points);
 	for (var i = 0; i < TEXTURE_WIDTH; i++) {
 		var pt = points[i];
 		setTextureValue(texture, i, pt.x, pt.y, pt.z, 0);
@@ -62515,7 +62494,9 @@ function getUniforms(splineTexture) {
 	return uniforms;
 }
 
-function modifyShader( material, uniforms ) {
+
+function modifyShader(material, uniforms) {
+	uniforms = uniforms || getUniforms();
 	if (material.__ok) return;
 	material.__ok = true;
 
@@ -62574,8 +62555,41 @@ function modifyShader( material, uniforms ) {
 		shader.vertexShader = vertexShader;
 	};
 
-
 	return uniforms;
+}
+
+/**
+ * Ideally this would perform the material changes before cloning
+ * so that they all share the same material making it much more
+ * efficient but as far as I can tell there is currently no way
+ * of doing that with beforeCompile.
+ */
+class Flow {
+	constructor(mesh) {
+		const obj3D = mesh.clone();
+		const splineTexure = initSplineTexture();
+		const uniforms = getUniforms(splineTexure);
+		obj3D.traverse(function (child) {
+			if (child instanceof Mesh) {
+				child.material = child.material.clone();
+				modifyShader( child.material, uniforms );
+			}
+		});
+
+		this.object3D = obj3D;
+		this.splineTexure = splineTexure;
+		this.uniforms = uniforms;
+	}
+
+	addToCurve(curve) {
+		const curveLength = curve.getLength();
+		this.uniforms.spineLength.value = curveLength;
+		updateSplineTexture(this.splineTexure, curve);
+	}
+
+	moveAlongCurve(amount) {
+		this.uniforms.pathOffset.value += amount;
+	}
 }
 
 const loader = new GLTFLoader();
@@ -62628,62 +62642,50 @@ const modelsPromise = (async function () {
 
 	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
 	const { scene: fish } = await new Promise(resolve => loader.load('./assets/fish.glb', resolve));
-	fish.position.y = 0.15;
-	fish.children[0].children[0].children[0].children[0].children[0].scale.set(0.2, 0.2, 0.2);
-	fish.children[0].children[0].children[0].children[0].children[0].position.set(0,-0.18,0);
-	fish.children[0].children[0].children[0].children[0].children[0].rotation.set(Math.PI/2,0,Math.PI/2);
-	fish.traverse(o => {
-		if (o.material) {
-			o.material.side = DoubleSide;
-			o.material.depthWrite = true;
-		}
-	});
-	window.fish = fish;
-	scene.add(fish);
+	// fish.position.y = 0.15;
+	fish.children[0].rotation.set(Math.PI, -Math.PI/2, 0);
+	fish.children[0].scale.multiplyScalar(0.6);
+	fish.children[0].position.y += 0.1;
 
-	return {fish, trees};
+	class Fish extends Flow {
+		constructor() {
+			super(fish.children[0]);
+		}
+	}
+
+	return {Fish, trees};
 }());
 
 (async function generatePath() {
-	//Create a closed wavey loop
-	const curve = new CatmullRomCurve3( [
+
+	const curve = new CatmullRomCurve3([
 		new Vector3( -1, 0.15, 1 ),
 		new Vector3( -1, 0.15, -1 ),
 		new Vector3( 0, 0.15, 0 ),
 		new Vector3( 1, 0.15, -1 ),
 		new Vector3( 2, 0.15, 2 )
-	] );
-
+	]);
 	curve.curveType = 'centripetal';
 	curve.closed = true;
-
 	const points = curve.getPoints( 50 );
-	const geometry = new BufferGeometry().setFromPoints( points );
-
-	const material = new LineBasicMaterial( { color : 0x00ff00 } );
-
-	// Create the final object to add to the scene
-	const line = new Line( geometry, material );
-
+	const line = new Line( new BufferGeometry().setFromPoints( points ), new LineBasicMaterial( { color : 0x00ff00 } ) );
 	scene.add(line);
 
-	const splineTexure = initSplineTexture(renderer);
-	const uniforms = getUniforms(splineTexure);
-	updateSplineTexture(curve, splineTexure, uniforms);
+	const { Fish } = await modelsPromise;
+	const fishes = [];
 
-	const {fish} = await modelsPromise;
-	fish.traverse( function ( child ) {
-		if ( child instanceof Mesh ) {
-			modifyShader( child.material, uniforms );
-		}
-	});
-
-	window.uniforms = uniforms;
+	const N = 3;
+	for (let i = 0; i < N; i++) {
+		const fish = new Fish();
+		fish.addToCurve(curve);
+		fish.moveAlongCurve(i/N);
+		scene.add(fish.object3D);
+		fishes.push(fish);
+	}
 
 	const speedPerTick = 0.05 / curve.getLength();
-
 	rafCallbacks.add(function () {
-		uniforms.pathOffset.value += speedPerTick;
+		fishes.forEach(fish => fish.moveAlongCurve(speedPerTick));
 	});
 }());
 
