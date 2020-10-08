@@ -58148,10 +58148,9 @@ const water = new Mesh(
 		opacity: 0.4
 	})
 );
+water.geometry.rotateX(-Math.PI / 2);
 water.renderOrder = 10;
-water.position.z = -5;
 water.position.y = 0.30;
-water.rotation.x = -Math.PI/2;
 scene.add(water);
 
 new WebXRPolyfill();
@@ -62203,70 +62202,39 @@ rafCallbacks.add(() => {
 });
 
 function locomotion(offset) {
-	const newPos = new Vector3();
-	newPos.copy(cameraGroup.position);
-	newPos.add(offset);
-	const dist = offset.length();
 
 	blinkerSphere.visible = true;
-	blinkerSphere.scale.set(2.5,2.5,2.5);
-	new TWEEN.Tween(blinkerSphere.scale)
-		.to({x:1,y:1,z:1}, 400)
+	blinkerSphere.material.opacity = 0;
+	new TWEEN.Tween(blinkerSphere.material)
+		.to({opacity: 1}, 200)
 		.easing(TWEEN.Easing.Quadratic.Out)
-		.start();
-	new TWEEN.Tween(cameraGroup.position)
-		.delay(400)
-		.to(newPos, dist*120)
-		.chain(
-			new TWEEN.Tween(blinkerSphere.scale)
-				.to({x:2.5,y:2.5,z:2.5}, 100)
+		.onComplete(function () {
+
+			// Do the teleport
+			cameraGroup.position.add(offset);
+
+			// Fade back
+			new TWEEN.Tween(blinkerSphere.material)
+				.to({opacity: 0}, 200)
 				.onComplete(() => blinkerSphere.visible = false)
-		)
+				.start();
+		})
 		.start();
 }
 
-// simple grid environment, locked to the user's space, makes motion more comfortable
-const gridTexture = new TextureLoader().load('./assets/grid.png');
-gridTexture.repeat.multiplyScalar(50);
-gridTexture.wrapS = gridTexture.wrapT = RepeatWrapping;
-const floor2 = new Mesh(
-	new PlaneGeometry(50, 50, 50, 50),
-	new MeshBasicMaterial({
-		map: gridTexture,
-		color: 0x555555,
-		depthWrite: false,
-		blending: AdditiveBlending
-	})
-);
-floor2.rotation.x = -Math.PI / 2;
-floor2.name = 'floor2';
-cameraGroup.add(floor2);
-
-const sky2geometry = new SphereGeometry(25, 50, 50, 0, 2 * Math.PI);
-const sky2material = new MeshBasicMaterial({
-	color: 0xaaaaaa,
-	depthWrite: false
-});
-sky2material.side = BackSide;
-const sky2sphere = new Mesh(sky2geometry, sky2material);
-sky2sphere.name = 'sky2sphere';
-cameraGroup.add(sky2sphere);
-
-const blinkerSphereGeometry = new SphereBufferGeometry(0.3, 64, 8, 0, Math.PI*2, 0, Math.PI * 0.85);
+const blinkerSphereGeometry = new SphereBufferGeometry(0.3, 16, 16);
 blinkerSphereGeometry.translate(0,0.3,0);
 const blinkerSphereMaterial = new MeshBasicMaterial({
 	side: BackSide,
-	colorWrite: false
+	color: 0x000000,
+	transparent: true
 });
 const blinkerSphere = new Mesh( blinkerSphereGeometry, blinkerSphereMaterial );
 blinkerSphere.rotation.set(Math.PI/2, 0, 0);
 blinkerSphere.position.set(0, 0, -0.3);
 blinkerSphere.visible = false;
 camera.add(blinkerSphere);
-
 blinkerSphereMaterial.renderOrder = -101;
-floor2.renderOrder = -102;
-sky2sphere.renderOrder = -103;
 
 function positionAtT(inVec,t,p,v,g) {
 	inVec.copy(p);
@@ -62596,43 +62564,51 @@ const loader = new GLTFLoader();
 
 // Debugging
 
-const canvas$1 = document.createElement('canvas');
+const canvas$1 = document.createElement("canvas");
 const canvasTexture = new CanvasTexture(canvas$1);
 canvas$1.width = 1024;
 canvas$1.height = 256;
-const ctx = canvas$1.getContext('2d');
+const ctx = canvas$1.getContext("2d");
 function writeText(text) {
-	if (typeof text !== 'string') text = JSON.stringify(text,null,2);
+	if (typeof text !== "string") text = JSON.stringify(text, null, 2);
 	ctx.font = "120px fantasy";
-	ctx.fillStyle = 'black';
+	ctx.fillStyle = "black";
 	ctx.fillRect(0, 0, canvas$1.width, canvas$1.height);
-	ctx.fillStyle = 'white';
-	text.split('\n').forEach((str, i) => ctx.fillText(str, 0, (i+1)*120));
+	ctx.fillStyle = "white";
+	text.split("\n").forEach((str, i) => ctx.fillText(str, 0, (i + 1) * 120));
 	canvasTexture.needsUpdate = true;
 }
 
-const geometry = new PlaneGeometry( 0.3 * canvas$1.width/1024, 0.3 * canvas$1.height/1024 );
-const material = new MeshBasicMaterial( {map: canvasTexture, blending: AdditiveBlending, transparent: true} );
-const consolePlane = new Mesh( geometry, material );
+const geometry = new PlaneGeometry(
+	(0.3 * canvas$1.width) / 1024,
+	(0.3 * canvas$1.height) / 1024
+);
+const material = new MeshBasicMaterial({
+	map: canvasTexture,
+	blending: AdditiveBlending,
+	transparent: true,
+});
+const consolePlane = new Mesh(geometry, material);
 consolePlane.renderOrder = 1;
-consolePlane.position.set(0, 0.5 * 0.3 * canvas$1.height/1024, -0.1);
-consolePlane.rotation.set(-Math.PI/4,0,0);
-controller1.add( consolePlane );
-writeText('hi');
+consolePlane.position.set(0, (0.5 * 0.3 * canvas$1.height) / 1024, -0.1);
+consolePlane.rotation.set(-Math.PI / 4, 0, 0);
+controller1.add(consolePlane);
+writeText("hi");
 
-gamepad.addEventListener('gamepadInteraction', function (event) {
+gamepad.addEventListener("gamepadInteraction", function (event) {
 	writeText(`${event.detail.type} ${event.detail.value}`);
 });
 
 const modelsPromise = (async function () {
-
 	// Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
-	const {scene: treesScene} = await new Promise(resolve => loader.load('./assets/forest.glb', resolve));
+	const { scene: treesScene } = await new Promise((resolve) =>
+		loader.load("./assets/forest.glb", resolve)
+	);
 	const trees = treesScene.children[0];
 	trees.position.z = 0;
 	trees.position.y = 2.5;
 	trees.scale.multiplyScalar(10);
-	trees.traverse(o => {
+	trees.traverse((o) => {
 		if (o.material) {
 			o.material.side = DoubleSide;
 			o.material.depthWrite = true;
@@ -62641,9 +62617,11 @@ const modelsPromise = (async function () {
 	scene.add(trees);
 
 	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
-	const { scene: fish } = await new Promise(resolve => loader.load('./assets/fish.glb', resolve));
+	const { scene: fish } = await new Promise((resolve) =>
+		loader.load("./assets/fish.glb", resolve)
+	);
 	// fish.position.y = 0.15;
-	fish.children[0].rotation.set(Math.PI, -Math.PI/2, 0);
+	fish.children[0].rotation.set(Math.PI, -Math.PI / 2, 0);
 	fish.children[0].scale.multiplyScalar(0.6);
 	fish.children[0].position.y += 0.1;
 
@@ -62653,22 +62631,24 @@ const modelsPromise = (async function () {
 		}
 	}
 
-	return {Fish, trees};
-}());
+	return { Fish, trees };
+})();
 
 (async function generatePath() {
-
 	const curve = new CatmullRomCurve3([
-		new Vector3( -1, 0.15, 1 ),
-		new Vector3( -1, 0.15, -1 ),
-		new Vector3( 0, 0.15, 0 ),
-		new Vector3( 1, 0.15, -1 ),
-		new Vector3( 2, 0.15, 2 )
+		new Vector3(-1, 0.15, 1),
+		new Vector3(-1, 0.15, -1),
+		new Vector3(0, 0.15, 0),
+		new Vector3(1, 0.15, -1),
+		new Vector3(2, 0.15, 2),
 	]);
-	curve.curveType = 'centripetal';
+	curve.curveType = "centripetal";
 	curve.closed = true;
-	const points = curve.getPoints( 50 );
-	const line = new Line( new BufferGeometry().setFromPoints( points ), new LineBasicMaterial( { color : 0x00ff00 } ) );
+	const points = curve.getPoints(50);
+	const line = new LineLoop(
+		new BufferGeometry().setFromPoints(points),
+		new LineBasicMaterial({ color: 0x00ff00 })
+	);
 	scene.add(line);
 
 	const { Fish } = await modelsPromise;
@@ -62678,16 +62658,67 @@ const modelsPromise = (async function () {
 	for (let i = 0; i < N; i++) {
 		const fish = new Fish();
 		fish.addToCurve(curve);
-		fish.moveAlongCurve(i/N);
+		fish.moveAlongCurve(i / N);
 		scene.add(fish.object3D);
 		fishes.push(fish);
 	}
 
 	const speedPerTick = 0.05 / curve.getLength();
 	rafCallbacks.add(function () {
-		fishes.forEach(fish => fish.moveAlongCurve(speedPerTick));
+		fishes.forEach((fish) => fish.moveAlongCurve(speedPerTick));
 	});
-}());
+})();
+
+(function rain() {
+	const rainRipples = [];
+	const unsedRainRipples = [];
+	const geometry = new CircleGeometry(1, 32);
+	geometry.rotateX(-Math.PI / 2);
+	geometry.vertices.splice(0, 1);
+
+	for (let i = 0; i < 5*3; i++) {
+		const material = new LineBasicMaterial({
+			color: 0x999999,
+			blending: AdditiveBlending,
+		});
+		const mesh = new LineLoop(geometry, material);
+		rainRipples.push(mesh);
+		unsedRainRipples.push(mesh);
+	}
+
+	(function drip() {
+		if (unsedRainRipples.length > 3) {
+			const ripplesToUse = unsedRainRipples.splice(0, 3);
+			const x = 20 * (Math.random() - 0.5);
+			const z = 20 * (Math.random() - 0.5);
+			for (let ri = 1; ri <= 3; ri++) {
+				const ripple = ripplesToUse[ri - 1];
+				ripple.position.set(x, -0.1, z);
+				setTimeout(() => {
+					ripple.scale.multiplyScalar(0);
+					ripple.material.color.setHex(0xffffff);
+					water.add(ripple);
+					setTimeout(() => {
+						water.remove(ripple);
+						unsedRainRipples.push(ripple);
+					}, 2000);
+				}, ri * 600);
+			}
+		}
+
+		setTimeout(drip, Math.random() * 1000);
+	}());
+
+	const rippleSpeed = new Vector3(1, 1, 1).multiplyScalar(0.03);
+	rafCallbacks.add(function () {
+		for (const r of rainRipples) {
+			r.scale.add(rippleSpeed);
+			const col = (r.material.color.getHex() >> 16)*0.95;
+			const newCol = (col << 16) + (col << 8) + col;
+			r.material.color.setHex(newCol);
+		}
+	});
+})();
 
 window.renderer = renderer;
 window.camera = camera;

@@ -8,8 +8,7 @@ import {
 	RGBFormat,
 	FloatType,
 	RepeatWrapping,
-	Mesh,
-	DoubleSide
+	Mesh
 } from 'three';
 
 /**

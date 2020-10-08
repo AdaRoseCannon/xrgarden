@@ -129,10 +129,9 @@ const water = new Mesh(
 		opacity: 0.4
 	})
 );
+water.geometry.rotateX(-Math.PI / 2);
 water.renderOrder = 10;
-water.position.z = -5;
 water.position.y = 0.30;
-water.rotation.x = -Math.PI/2;
 scene.add(water);
 
 new WebXRPolyfill();
@@ -160,5 +159,6 @@ export {
 	rafCallbacks,
 	cameraGroup,
 	camera,
-	context
+	context,
+	water
 }

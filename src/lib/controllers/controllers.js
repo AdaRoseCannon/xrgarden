@@ -21,7 +21,7 @@ import {
 
 import {
 	locomotion
-} from './locomotion/slide.js';
+} from './locomotion/fade.js';
 
 function positionAtT(inVec,t,p,v,g) {
 	inVec.copy(p);
