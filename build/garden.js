@@ -58396,7 +58396,7 @@ const modelsPromise = (async function () {
 	scene.add(line);
 
 	const { Fishes } = await modelsPromise;
-	const fishes = new Fishes(2000);
+	const fishes = new Fishes(150);
 	fishes.addToCurve(curve);
 	scene.add(fishes.object3D);
 
