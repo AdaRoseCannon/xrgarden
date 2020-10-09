@@ -16,12 +16,16 @@ import {
 	LineBasicMaterial,
 	LineLoop,
 	CircleGeometry,
+	InstancedMesh,
+	DynamicDrawUsage
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { Matrix4 } from "three";
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+const stats = new Stats();
+document.body.appendChild( stats.dom );
 
 const loader = new GLTFLoader();
-
-// Debugging
 
 const canvas = document.createElement("canvas");
 const canvasTexture = new CanvasTexture(canvas);
@@ -76,21 +80,35 @@ const modelsPromise = (async function () {
 	scene.add(trees);
 
 	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
-	const { scene: fish } = await new Promise((resolve) =>
+	const { scene: fishScene } = await new Promise((resolve) =>
 		loader.load("./assets/fish.glb", resolve)
 	);
-	// fish.position.y = 0.15;
-	fish.children[0].rotation.set(Math.PI, -Math.PI / 2, 0);
-	fish.children[0].scale.multiplyScalar(0.6);
-	fish.children[0].position.y += 0.1;
 
-	class Fish extends Flow {
-		constructor() {
-			super(fish.children[0]);
+	const matrix = new Matrix4();
+	class Fishes extends Flow {
+		constructor(count) {
+			const fish = new InstancedMesh(
+				fishScene.children[0].geometry,
+				fishScene.children[0].material,
+				count
+			);
+			fish.geometry.scale(0.6, 0.6, 0.6);
+			fish.geometry.rotateZ(Math.PI);
+			fish.geometry.rotateY(-Math.PI / 2);
+			fish.instanceMatrix.setUsage(DynamicDrawUsage);
+			super(fish);
+
+			this.offsets = new Array(count).fill(0);
+			this.count = count;
+		}
+		moveIndividualAlongCurve(index, offset) {
+			this.offsets[index] += offset;
+			matrix.makeTranslation(0, 0, this.offsets[index]);
+			this.object3D.setMatrixAt(index, matrix);
+			this.object3D.instanceMatrix.needsUpdate = true;
 		}
 	}
-
-	return { Fish, trees };
+	return { trees, Fishes };
 })();
 
 (async function generatePath() {
@@ -110,22 +128,24 @@ const modelsPromise = (async function () {
 	);
 	scene.add(line);
 
-	const { Fish } = await modelsPromise;
-	const fishes = [];
+	const { Fishes } = await modelsPromise;
+	const fishes = new Fishes(2000);
+	fishes.addToCurve(curve);
+	scene.add(fishes.object3D);
 
-	const N = 3;
-	for (let i = 0; i < N; i++) {
-		const fish = new Fish();
-		fish.addToCurve(curve);
-		fish.moveAlongCurve(i / N);
-		scene.add(fish.object3D);
-		fishes.push(fish);
+	for (let i = 0; i < fishes.count; i++) {
+		fishes.moveIndividualAlongCurve(i, i * 1 / fishes.count);
 	}
 
-	const speedPerTick = 0.05 / curve.getLength();
+	const speedPerTick = 0.006 / curve.getLength();
 	rafCallbacks.add(function () {
-		fishes.forEach((fish) => fish.moveAlongCurve(speedPerTick));
+		// fishes.moveAlongCurve(speedPerTick);
+		for (let i = 0; i < fishes.count; i++) {
+			fishes.moveIndividualAlongCurve(i, Math.random() * speedPerTick);
+		}
 	});
+
+	rafCallbacks.add(() => stats.update());
 })();
 
 (function rain() {
@@ -166,7 +186,7 @@ const modelsPromise = (async function () {
 		}
 
 		setTimeout(drip, Math.random() * 1000);
-	}())
+	}());
 
 	const rippleSpeed = new Vector3(1, 1, 1).multiplyScalar(0.03);
 	rafCallbacks.add(function () {

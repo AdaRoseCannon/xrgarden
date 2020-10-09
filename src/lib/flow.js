@@ -1,6 +1,6 @@
 // Original src: htt
 const BITS = 3;
-const TEXTURE_WIDTH = 256;
+const TEXTURE_WIDTH = 1024;
 const TEXTURE_HEIGHT = 4;
 
 import {
@@ -8,7 +8,8 @@ import {
 	RGBFormat,
 	FloatType,
 	RepeatWrapping,
-	Mesh
+	Mesh,
+	InstancedMesh
 } from 'three';
 
 /**
@@ -80,7 +81,7 @@ export function modifyShader(material, uniforms) {
 	if (material.__ok) return;
 	material.__ok = true;
 
-	material.onBeforeCompile = ( shader ) => {
+	material.onBeforeCompile = (shader) => {
 
 		if (shader.__modified) return;
 		shader.__modified = true;
@@ -95,7 +96,7 @@ export function modifyShader(material, uniforms) {
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = 4.; // look up takes (i + 0.5) / textureLayers
+		float textureLayers = ${TEXTURE_HEIGHT}.; // look up takes (i + 0.5) / textureLayers
 
 		${shader.vertexShader}
 		`.replace(
@@ -106,7 +107,13 @@ export function modifyShader(material, uniforms) {
 		bool bend = flow > 0;
 		float spinePortion = bend ? (worldPos.x + spineOffset) / spineLength : 0.;
 		float xWeight = bend ? 0. : 1.;
+
+		#ifdef USE_INSTANCING
+		float pathOffsetFromInstanceMatrix = instanceMatrix[3][2];
+		float mt = spinePortion * pathSegment + pathOffset + pathOffsetFromInstanceMatrix;
+		#else
 		float mt = spinePortion * pathSegment + pathOffset;
+		#endif
 
 		vec3 spinePos = texture(spineTexture, vec2(mt, (0.5) / textureLayers)).xyz;
 		vec3 a = texture(spineTexture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
@@ -150,7 +157,10 @@ export class Flow {
 		const splineTexure = initSplineTexture();
 		const uniforms = getUniforms(splineTexure);
 		obj3D.traverse(function (child) {
-			if (child instanceof Mesh) {
+			if (
+				child instanceof Mesh ||
+				child instanceof InstancedMesh
+			) {
 				child.material = child.material.clone();
 				modifyShader( child.material, uniforms );
 			}
