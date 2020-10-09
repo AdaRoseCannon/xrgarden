@@ -1,7 +1,7 @@
 // Original src: htt
 const BITS = 3;
 const TEXTURE_WIDTH = 1024;
-const TEXTURE_HEIGHT = 4;
+const TEXTURE_HEIGHT = 4; // Ideally this should be able to be set to high powers of 2 but the parts from further down the texture get warped in that situation
 
 import {
 	DataTexture,
@@ -9,7 +9,8 @@ import {
 	FloatType,
 	RepeatWrapping,
 	Mesh,
-	InstancedMesh
+	InstancedMesh,
+	NearestFilter
 } from 'three';
 
 /**
@@ -27,40 +28,44 @@ export function initSplineTexture() {
 
 	dataTexture.wrapS = RepeatWrapping;
 	dataTexture.wrapY = RepeatWrapping;
+	dataTexture.magFilter = NearestFilter;
 	dataTexture.needsUpdate = true;
 
 	return dataTexture;
 }
 
-function setTextureValue(texture, index, x, y, z, o) {
-	const image = texture.image;
-	const { data } = image;
-	const i = BITS * TEXTURE_WIDTH * (o || 0);
-	data[index * BITS + i + 0] = x;
-	data[index * BITS + i + 1] = y;
-	data[index * BITS + i + 2] = z;
-}
-
 export function updateSplineTexture(texture, splineCurve) {
 
-	splineCurve.arcLengthDivisions = 200;
+	const numberOfPoints = Math.floor(TEXTURE_WIDTH * (TEXTURE_HEIGHT/4));
+	splineCurve.arcLengthDivisions = numberOfPoints/2;
 	splineCurve.updateArcLengths();
+	const points = splineCurve.getSpacedPoints(numberOfPoints);
+	const frenetFrames = splineCurve.computeFrenetFrames(numberOfPoints, true);
 
-	var points = splineCurve.getSpacedPoints(TEXTURE_WIDTH - 1);
-	var frenetFrames = splineCurve.computeFrenetFrames(TEXTURE_WIDTH - 1, true);
+	for (let i = 0; i < numberOfPoints; i++) {
+		let rowOffset = Math.floor(i / TEXTURE_WIDTH);
+		let rowIndex = i % TEXTURE_WIDTH;
 
-	for (var i = 0; i < TEXTURE_WIDTH; i++) {
-		var pt = points[i];
-		setTextureValue(texture, i, pt.x, pt.y, pt.z, 0);
+		let pt = points[i];
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 0 + rowOffset);
 		pt = frenetFrames.tangents[i];
-		setTextureValue(texture, i, pt.x, pt.y, pt.z, 1);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 1 + rowOffset);
 		pt = frenetFrames.normals[i];
-		setTextureValue(texture, i, pt.x, pt.y, pt.z, 2);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 2 + rowOffset);
 		pt = frenetFrames.binormals[i];
-		setTextureValue(texture, i, pt.x, pt.y, pt.z, 3);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 3 + rowOffset);
 	}
 
 	texture.needsUpdate = true;
+}
+
+function setTextureValue(texture, index, x, y, z, o) {
+	const image = texture.image;
+	const { data } = image;
+	const i = BITS * TEXTURE_WIDTH * o; // Row Offset
+	data[index * BITS + i + 0] = x;
+	data[index * BITS + i + 1] = y;
+	data[index * BITS + i + 2] = z;
 }
 
 export function getUniforms(splineTexture) {
@@ -96,7 +101,8 @@ export function modifyShader(material, uniforms) {
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = ${TEXTURE_HEIGHT}.; // look up takes (i + 0.5) / textureLayers
+		float textureLayers = ${TEXTURE_HEIGHT}.;
+		float textureStacks = ${TEXTURE_HEIGHT/4}.;
 
 		${shader.vertexShader}
 		`.replace(
@@ -110,15 +116,17 @@ export function modifyShader(material, uniforms) {
 
 		#ifdef USE_INSTANCING
 		float pathOffsetFromInstanceMatrix = instanceMatrix[3][2];
-		float mt = spinePortion * pathSegment + pathOffset + pathOffsetFromInstanceMatrix;
+		float mt = (spinePortion * pathSegment + pathOffset + pathOffsetFromInstanceMatrix)*textureStacks;
 		#else
-		float mt = spinePortion * pathSegment + pathOffset;
+		float mt = (spinePortion * pathSegment + pathOffset)*textureStacks;
 		#endif
 
-		vec3 spinePos = texture(spineTexture, vec2(mt, (0.5) / textureLayers)).xyz;
-		vec3 a = texture(spineTexture, vec2(mt, (1. + 0.5) / textureLayers)).xyz;
-		vec3 b = texture(spineTexture, vec2(mt, (2. + 0.5) / textureLayers)).xyz;
-		vec3 c = texture(spineTexture, vec2(mt, (3. + 0.5) / textureLayers)).xyz;
+		mt = mod(mt, textureStacks);
+		float rowOffset = floor(mt);
+		vec3 spinePos = texture(spineTexture, vec2(mt, (0. + rowOffset + 0.5) / textureLayers)).xyz;
+		vec3 a =        texture(spineTexture, vec2(mt, (1. + rowOffset + 0.5) / textureLayers)).xyz;
+		vec3 b =        texture(spineTexture, vec2(mt, (2. + rowOffset + 0.5) / textureLayers)).xyz;
+		vec3 c =        texture(spineTexture, vec2(mt, (3. + rowOffset + 0.5) / textureLayers)).xyz;
 		mat3 basis = mat3(a, b, c);
 
 		vec3 transformed = basis

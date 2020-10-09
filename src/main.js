@@ -129,7 +129,8 @@ const modelsPromise = (async function () {
 	scene.add(line);
 
 	const { Fishes } = await modelsPromise;
-	const fishes = new Fishes(150);
+	const fishes = new Fishes(10);
+	// const fishes = new Fishes(150);
 	fishes.addToCurve(curve);
 	scene.add(fishes.object3D);
 
@@ -137,7 +138,7 @@ const modelsPromise = (async function () {
 		fishes.moveIndividualAlongCurve(i, i * 1 / fishes.count);
 	}
 
-	const speedPerTick = 0.006 / curve.getLength();
+	const speedPerTick = 0.009 / curve.getLength();
 	rafCallbacks.add(function () {
 		// fishes.moveAlongCurve(speedPerTick);
 		for (let i = 0; i < fishes.count; i++) {
