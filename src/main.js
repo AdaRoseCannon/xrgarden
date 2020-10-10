@@ -131,16 +131,16 @@ const curves = [
 	[
 		new Vector3(1, 0.15, 4),
 		new Vector3(0, 0.15, 1),
-		new Vector3(-1, 0.15, -1),
+		new Vector3(-1, 0.15, -2),
 		new Vector3(-2, 0.15, 1),
-		new Vector3(-2, 0.15, 3),
+		new Vector3(-3, 0.15, 4),
 	],
 ];
 
 (async function generatePath() {
 
 	const { Fishes } = await modelsPromise;
-	const fishes = new Fishes(20, curves.length); // 10 fish models, space for 2 curves
+	const fishes = new Fishes(40, curves.length); // 10 fish models, space for 2 curves
 	scene.add(fishes.object3D);
 
 	for (const curveDesc of curves) {
