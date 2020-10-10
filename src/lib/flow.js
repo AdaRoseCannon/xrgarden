@@ -16,12 +16,12 @@ import {
 /**
  * Prepares texture for storing positions and normals for spline
  */
-export function initSplineTexture() {
-	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * BITS );
+export function initSplineTexture(numberOfCurves) {
+	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * numberOfCurves * BITS );
 	const dataTexture = new DataTexture(
 		dataArray,
 		TEXTURE_WIDTH,
-		TEXTURE_HEIGHT,
+		TEXTURE_HEIGHT * numberOfCurves,
 		RGBFormat,
 		FloatType
 	);
@@ -34,7 +34,7 @@ export function initSplineTexture() {
 	return dataTexture;
 }
 
-export function updateSplineTexture(texture, splineCurve) {
+export function updateSplineTexture(texture, splineCurve, offset) {
 
 	const numberOfPoints = Math.floor(TEXTURE_WIDTH * (TEXTURE_HEIGHT/4));
 	splineCurve.arcLengthDivisions = numberOfPoints/2;
@@ -47,13 +47,13 @@ export function updateSplineTexture(texture, splineCurve) {
 		let rowIndex = i % TEXTURE_WIDTH;
 
 		let pt = points[i];
-		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 0 + rowOffset);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 0 + rowOffset + (TEXTURE_HEIGHT * offset));
 		pt = frenetFrames.tangents[i];
-		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 1 + rowOffset);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 1 + rowOffset + (TEXTURE_HEIGHT * offset));
 		pt = frenetFrames.normals[i];
-		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 2 + rowOffset);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 2 + rowOffset + (TEXTURE_HEIGHT * offset));
 		pt = frenetFrames.binormals[i];
-		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 3 + rowOffset);
+		setTextureValue(texture, rowIndex, pt.x, pt.y, pt.z, 3 + rowOffset + (TEXTURE_HEIGHT * offset));
 	}
 
 	texture.needsUpdate = true;
@@ -81,7 +81,7 @@ export function getUniforms(splineTexture) {
 }
 
 
-export function modifyShader(material, uniforms) {
+export function modifyShader(material, uniforms, numberOfCurves) {
 	uniforms = uniforms || getUniforms();
 	if (material.__ok) return;
 	material.__ok = true;
@@ -101,7 +101,7 @@ export function modifyShader(material, uniforms) {
 		uniform float spineLength;
 		uniform int flow;
 
-		float textureLayers = ${TEXTURE_HEIGHT}.;
+		float textureLayers = ${TEXTURE_HEIGHT * numberOfCurves}.;
 		float textureStacks = ${TEXTURE_HEIGHT/4}.;
 
 		${shader.vertexShader}
@@ -123,6 +123,11 @@ export function modifyShader(material, uniforms) {
 
 		mt = mod(mt, textureStacks);
 		float rowOffset = floor(mt);
+
+		#ifdef USE_INSTANCING
+		rowOffset += instanceMatrix[3][1] * ${TEXTURE_HEIGHT}.;
+		#endif
+
 		vec3 spinePos = texture(spineTexture, vec2(mt, (0. + rowOffset + 0.5) / textureLayers)).xyz;
 		vec3 a =        texture(spineTexture, vec2(mt, (1. + rowOffset + 0.5) / textureLayers)).xyz;
 		vec3 b =        texture(spineTexture, vec2(mt, (2. + rowOffset + 0.5) / textureLayers)).xyz;
@@ -160,9 +165,9 @@ export function modifyShader(material, uniforms) {
  * of doing that with beforeCompile.
  */
 export class Flow {
-	constructor(mesh) {
+	constructor(mesh, numberOfCurves=1) {
 		const obj3D = mesh.clone();
-		const splineTexure = initSplineTexture();
+		const splineTexure = initSplineTexture(numberOfCurves);
 		const uniforms = getUniforms(splineTexure);
 		obj3D.traverse(function (child) {
 			if (
@@ -170,9 +175,12 @@ export class Flow {
 				child instanceof InstancedMesh
 			) {
 				child.material = child.material.clone();
-				modifyShader( child.material, uniforms );
+				modifyShader( child.material, uniforms, numberOfCurves );
 			}
 		});
+
+		this.maxCurves = numberOfCurves;
+		this.currentCurveCount = 0;
 
 		this.object3D = obj3D;
 		this.splineTexure = splineTexure;
@@ -180,9 +188,10 @@ export class Flow {
 	}
 
 	addToCurve(curve) {
+		if (this.currentCurveCount >= this.numberOfCurves) throw Error("Max number of curves reached")
 		const curveLength = curve.getLength();
 		this.uniforms.spineLength.value = curveLength;
-		updateSplineTexture(this.splineTexure, curve);
+		updateSplineTexture(this.splineTexure, curve, this.currentCurveCount++);
 	}
 
 	moveAlongCurve(amount) {

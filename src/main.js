@@ -86,7 +86,7 @@ const modelsPromise = (async function () {
 
 	const matrix = new Matrix4();
 	class Fishes extends Flow {
-		constructor(count) {
+		constructor(count, curveCount) {
 			const fish = new InstancedMesh(
 				fishScene.children[0].geometry,
 				fishScene.children[0].material,
@@ -96,53 +96,75 @@ const modelsPromise = (async function () {
 			fish.geometry.rotateZ(Math.PI);
 			fish.geometry.rotateY(-Math.PI / 2);
 			fish.instanceMatrix.setUsage(DynamicDrawUsage);
-			super(fish);
+			super(fish, curveCount);
 
 			this.offsets = new Array(count).fill(0);
+			this.whichCurve = new Array(count).fill(0);
 			this.count = count;
+		}
+		writeChanges(index) {
+			matrix.makeTranslation(0, this.whichCurve[index], this.offsets[index]);
+			this.object3D.setMatrixAt(index, matrix);
+			this.object3D.instanceMatrix.needsUpdate = true;
 		}
 		moveIndividualAlongCurve(index, offset) {
 			this.offsets[index] += offset;
-			matrix.makeTranslation(0, 0, this.offsets[index]);
-			this.object3D.setMatrixAt(index, matrix);
-			this.object3D.instanceMatrix.needsUpdate = true;
+			this.writeChanges(index);
+		}
+		setCurve(index, curveNo) {
+			this.whichCurve[index] = curveNo;
+			this.writeChanges(index);
 		}
 	}
 	return { trees, Fishes };
 })();
 
-(async function generatePath() {
-	const curve = new CatmullRomCurve3([
+const curves = [
+	[
 		new Vector3(-1, 0.15, 1),
 		new Vector3(-1, 0.15, -1),
 		new Vector3(0, 0.15, 0),
 		new Vector3(1, 0.15, -1),
 		new Vector3(2, 0.15, 2),
-	]);
-	curve.curveType = "centripetal";
-	curve.closed = true;
-	const points = curve.getPoints(50);
-	const line = new LineLoop(
-		new BufferGeometry().setFromPoints(points),
-		new LineBasicMaterial({ color: 0x00ff00 })
-	);
-	scene.add(line);
+	],
+	[
+		new Vector3(1, 0.15, 4),
+		new Vector3(0, 0.15, 1),
+		new Vector3(-1, 0.15, -1),
+		new Vector3(-2, 0.15, 1),
+		new Vector3(-2, 0.15, 3),
+	],
+];
+
+(async function generatePath() {
 
 	const { Fishes } = await modelsPromise;
-	const fishes = new Fishes(10);
-	// const fishes = new Fishes(150);
-	fishes.addToCurve(curve);
+	const fishes = new Fishes(20, curves.length); // 10 fish models, space for 2 curves
 	scene.add(fishes.object3D);
 
-	for (let i = 0; i < fishes.count; i++) {
-		fishes.moveIndividualAlongCurve(i, i * 1 / fishes.count);
+	for (const curveDesc of curves) {
+		const curve = new CatmullRomCurve3(curveDesc);
+		curve.curveType = "centripetal";
+		curve.closed = true;
+		const points = curve.getPoints(50);
+		const line = new LineLoop(
+			new BufferGeometry().setFromPoints(points),
+			new LineBasicMaterial({ color: 0x00ff00 })
+		);
+		scene.add(line);
+		fishes.addToCurve(curve);
 	}
 
-	const speedPerTick = 0.009 / curve.getLength();
+	for (let i = 0; i < fishes.count; i++) {
+		fishes.moveIndividualAlongCurve(i, (i * 1) / fishes.count);
+		fishes.setCurve(i, i % fishes.maxCurves);
+	}
+
+	const speedPerTick = 0.009 / 10;
 	rafCallbacks.add(function () {
 		// fishes.moveAlongCurve(speedPerTick);
 		for (let i = 0; i < fishes.count; i++) {
-			fishes.moveIndividualAlongCurve(i, Math.random() * speedPerTick);
+			fishes.moveIndividualAlongCurve(i, speedPerTick);
 		}
 	});
 
