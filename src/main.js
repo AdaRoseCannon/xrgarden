@@ -17,7 +17,8 @@ import {
 	LineLoop,
 	CircleGeometry,
 	InstancedMesh,
-	DynamicDrawUsage
+	DynamicDrawUsage,
+	Color
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Matrix4 } from "three";
@@ -158,6 +159,7 @@ const curves = [
 	for (let i = 0; i < fishes.count; i++) {
 		fishes.moveIndividualAlongCurve(i, (i * 1) / fishes.count);
 		fishes.setCurve(i, i % fishes.maxCurves);
+		fishes.object3D.setColorAt(i, new Color(`hsl(${Math.floor(50 * Math.random())}, ${Math.floor(100 * Math.random())}%, ${Math.floor(20 + 80 * Math.random())}%)`));
 	}
 
 	const speedPerTick = 0.009 / 10;
