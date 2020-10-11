@@ -205,19 +205,19 @@ const curves = [
 					setTimeout(() => {
 						water.remove(ripple);
 						unsedRainRipples.push(ripple)
-					}, 2000);
-				}, ri * 600);
+					}, 3000);
+				}, ri * 800);
 			}
 		}
 
 		setTimeout(drip, Math.random() * 1000);
 	}());
 
-	const rippleSpeed = new Vector3(1, 1, 1).multiplyScalar(0.03);
+	const rippleSpeed = new Vector3(1, 1, 1).multiplyScalar(0.018);
 	rafCallbacks.add(function () {
 		for (const r of rainRipples) {
 			r.scale.add(rippleSpeed);
-			const col = (r.material.color.getHex() >> 16)*0.95;
+			const col = (r.material.color.getHex() >> 16)*0.99;
 			const newCol = (col << 16) + (col << 8) + col;
 			r.material.color.setHex(newCol);
 		}
