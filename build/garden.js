@@ -58350,17 +58350,12 @@ const modelsPromise = (async function () {
 	const { scene: treesScene } = await new Promise((resolve) =>
 		loader.load("./assets/forest.glb", resolve)
 	);
-	const trees = treesScene.children[0];
-	trees.position.z = 0;
-	trees.position.y = 2.5;
-	trees.scale.multiplyScalar(10);
-	trees.traverse((o) => {
-		if (o.material) {
-			o.material.side = DoubleSide;
-			o.material.depthWrite = true;
-		}
-	});
-	scene.add(trees);
+	const flotsam = treesScene.children[0];
+	flotsam.position.y = 0;
+	flotsam.material.transparent = true;
+	flotsam.material.opacity = 0.5;
+	water.add(flotsam);
+	scene.add(treesScene);
 
 	// LilyPad by Poly by Google, https://poly.google.com/view/0-_GjMekeob
 	const { scene: lilyPadScene } = await new Promise((resolve) =>
@@ -58412,7 +58407,7 @@ const modelsPromise = (async function () {
 			this.writeChanges(index);
 		}
 	}
-	return { trees, Fishes };
+	return { Fishes };
 })();
 
 const curves = [
