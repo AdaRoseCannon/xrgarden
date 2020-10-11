@@ -58362,6 +58362,19 @@ const modelsPromise = (async function () {
 	});
 	scene.add(trees);
 
+	// LilyPad by Poly by Google, https://poly.google.com/view/0-_GjMekeob
+	const { scene: lilyPadScene } = await new Promise((resolve) =>
+		loader.load("./assets/LilyPad.glb", resolve)
+	);
+	water.add(lilyPadScene);
+
+	const { scene: lilyPad2 } = await new Promise((resolve) =>
+		loader.load("./assets/LilyPad2.glb", resolve)
+	);
+	lilyPad2.position.x += -1;
+	lilyPad2.position.z += 1;
+	water.add(lilyPad2);
+
 	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
 	const { scene: fishScene } = await new Promise((resolve) =>
 		loader.load("./assets/fish.glb", resolve)
