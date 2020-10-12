@@ -17,7 +17,8 @@ import {
 	CircleGeometry,
 	InstancedMesh,
 	DynamicDrawUsage,
-	Color
+	Color,
+	BackSide
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Matrix4 } from "three";
@@ -69,8 +70,10 @@ const modelsPromise = (async function () {
 	);
 	const flotsam = treesScene.children[0];
 	flotsam.position.y = 0;
+	flotsam.material.side = BackSide;
 	flotsam.material.transparent = true;
 	flotsam.material.opacity = 0.5;
+	window.flotsam = flotsam;
 	water.add(flotsam);
 	scene.add(treesScene);
 
