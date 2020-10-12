@@ -73,7 +73,6 @@ const modelsPromise = (async function () {
 	flotsam.material.side = BackSide;
 	flotsam.material.transparent = true;
 	flotsam.material.opacity = 0.5;
-	window.flotsam = flotsam;
 	water.add(flotsam);
 	scene.add(treesScene);
 
