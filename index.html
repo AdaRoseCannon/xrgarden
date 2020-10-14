@@ -1,17 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XR Garden</title>
-    <script type="module" src="build/garden.js"></script>
-    <style>html, body {
-        padding: 0;
-        margin: 0;
-        overflow: hidden;
-    }</style>
-</head>
-<body>
-    <canvas></canvas>
-</body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>XR Garden</title>
+		<script type="module" src="build/garden.js"></script>
+		<style>
+			html,
+			body {
+				padding: 0;
+				margin: 0;
+				overflow: hidden;
+			}
+			label, button {
+				padding: 0.2em 0;
+				display: block;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas></canvas>
+		<div style="position: fixed; right: 0; top: 0; background: #fff8;" id="overlay"></div>
+	</body>
 </html>

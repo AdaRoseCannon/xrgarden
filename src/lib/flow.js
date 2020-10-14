@@ -1,4 +1,4 @@
-// Original src: htt
+// Original src: https://github.com/zz85/threejs-path-flow
 const BITS = 3;
 const TEXTURE_WIDTH = 1024;
 const TEXTURE_HEIGHT = 4; // Ideally this should be able to be set to high powers of 2 but the parts from further down the texture get warped in that situation
@@ -10,7 +10,9 @@ import {
 	RepeatWrapping,
 	Mesh,
 	InstancedMesh,
-	NearestFilter
+	NearestFilter,
+	DynamicDrawUsage,
+	Matrix4
 } from 'three';
 
 /**
@@ -80,7 +82,6 @@ export function getUniforms(splineTexture) {
 	return uniforms;
 }
 
-
 export function modifyShader(material, uniforms, numberOfCurves) {
 	uniforms = uniforms || getUniforms();
 	if (material.__ok) return;
@@ -111,13 +112,15 @@ export function modifyShader(material, uniforms, numberOfCurves) {
 		vec4 worldPos = modelMatrix * vec4(position, 1.);
 
 		bool bend = flow > 0;
-		float spinePortion = bend ? (worldPos.x + spineOffset) / spineLength : 0.;
 		float xWeight = bend ? 0. : 1.;
 
 		#ifdef USE_INSTANCING
 		float pathOffsetFromInstanceMatrix = instanceMatrix[3][2];
+		float spineLengthFromInstanceMatrix = instanceMatrix[3][0];
+		float spinePortion = bend ? (worldPos.x + spineOffset) / spineLengthFromInstanceMatrix : 0.;
 		float mt = (spinePortion * pathSegment + pathOffset + pathOffsetFromInstanceMatrix)*textureStacks;
 		#else
+		float spinePortion = bend ? (worldPos.x + spineOffset) / spineLength : 0.;
 		float mt = (spinePortion * pathSegment + pathOffset)*textureStacks;
 		#endif
 
@@ -179,7 +182,8 @@ export class Flow {
 			}
 		});
 
-		this.maxCurves = numberOfCurves;
+		this.curveArray = new Array(numberOfCurves);
+		this.curveLengthArray = new Array(numberOfCurves);
 		this.currentCurveCount = 0;
 
 		this.object3D = obj3D;
@@ -187,14 +191,50 @@ export class Flow {
 		this.uniforms = uniforms;
 	}
 
-	addToCurve(curve) {
-		if (this.currentCurveCount >= this.numberOfCurves) throw Error("Max number of curves reached")
+	updateCurve(index, curve) {
+		if (index >= this.curveArray.length) throw Error('Index out of range for Flow');
 		const curveLength = curve.getLength();
 		this.uniforms.spineLength.value = curveLength;
-		updateSplineTexture(this.splineTexure, curve, this.currentCurveCount++);
+		this.curveLengthArray[index] = curveLength;
+		this.curveArray[index] = curve;
+		updateSplineTexture(this.splineTexure, curve, index);
 	}
 
 	moveAlongCurve(amount) {
 		this.uniforms.pathOffset.value += amount;
+	}
+}
+const matrix = new Matrix4();
+export class InstancedFlow extends Flow {
+	constructor(count, curveCount, geometry, material) {
+		const mesh = new InstancedMesh(
+			geometry,
+			material,
+			count
+		);
+		mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+		super(mesh, curveCount);
+
+		this.offsets = new Array(count).fill(0);
+		this.whichCurve = new Array(count).fill(0);
+		this.count = count;
+	}
+	writeChanges(index) {
+		matrix.makeTranslation(
+			this.curveLengthArray[this.whichCurve[index]],
+			this.whichCurve[index],
+			this.offsets[index]
+		);
+		this.object3D.setMatrixAt(index, matrix);
+		this.object3D.instanceMatrix.needsUpdate = true;
+	}
+	moveIndividualAlongCurve(index, offset) {
+		this.offsets[index] += offset;
+		this.writeChanges(index);
+	}
+	setCurve(index, curveNo) {
+		if (isNaN(curveNo)) throw Error("curve index being set is Not a Number (NaN)")
+		this.whichCurve[index] = curveNo;
+		this.writeChanges(index);
 	}
 }

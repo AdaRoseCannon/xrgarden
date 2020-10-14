@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "npm run  build; node ./",
-    "build": "rollup -c;  terser --compress --mangle -o build/garden.min.js -- build/garden.js; find build -maxdepth 1 -not -type d -exec du -h {} \\;",
-    "develop": "rollup -w -c;  terser --compress --mangle -o build/garden.min.js -- build/garden.js; find build -maxdepth 1 -not -type d -exec du -h {} \\;",
+    "build": "rm -rf build/*; rollup -c; find build -maxdepth 1 -not -type d -exec du -h {} \\;",
+    "develop": "rollup -w -c; find build -maxdepth 1 -not -type d -exec du -h {} \\;",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -21,7 +21,7 @@
     "eslint": "^7",
     "rollup": "^2.29.0",
     "rollup-plugin-commonjs": "^10.1.0",
-    "terser": "^5",
+    "rollup-plugin-terser": "^7.0.2",
     "three": "^0.121.1",
     "webxr-polyfill": "^2.0.3"
   }

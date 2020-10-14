@@ -13,7 +13,7 @@
         "sourceType": "module"
     },
     "rules": {
-        "indent": ["warn", "tab"],
+        "indent": ["warn", "tab", { "SwitchCase": 1 }],
         "no-trailing-spaces": ["warn"]
     }
 }

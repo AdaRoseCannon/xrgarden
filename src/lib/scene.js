@@ -160,5 +160,7 @@ export {
 	cameraGroup,
 	camera,
 	context,
-	water
+	water,
+	floor,
+	controls
 }

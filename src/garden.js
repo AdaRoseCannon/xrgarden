@@ -1,7 +1,9 @@
 import { renderer, scene, camera, rafCallbacks, water } from "./lib/scene.js";
 import { controller1 } from "./lib/controllers/controllers.js";
 import { gamepad } from "./lib/controllers/gamepad.js";
-import { Flow } from "./lib/flow.js";
+import { InstancedFlow } from "./lib/flow.js";
+import { curves } from "./lib/positions.js";
+import { models } from "./lib/meshes.js";
 
 import {
 	Mesh,
@@ -11,22 +13,17 @@ import {
 	MeshBasicMaterial,
 	Vector3,
 	CatmullRomCurve3,
-	BufferGeometry,
 	LineBasicMaterial,
 	LineLoop,
 	CircleGeometry,
 	InstancedMesh,
 	DynamicDrawUsage,
-	Color,
-	BackSide
+	Color
 } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Matrix4 } from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 const stats = new Stats();
 document.body.appendChild( stats.dom );
-
-const loader = new GLTFLoader();
 
 const canvas = document.createElement("canvas");
 const canvasTexture = new CanvasTexture(canvas);
@@ -64,110 +61,44 @@ gamepad.addEventListener("gamepadInteraction", function (event) {
 });
 
 const modelsPromise = (async function () {
-	// Forest from Google Poly, https://poly.google.com/view/2_fv3tn3NG_
-	const { scene: treesScene } = await new Promise((resolve) =>
-		loader.load("./assets/forest.glb", resolve)
-	);
-	const flotsam = treesScene.children[0];
-	flotsam.position.y = 0;
-	flotsam.material.side = BackSide;
-	flotsam.material.transparent = true;
-	flotsam.material.opacity = 0.5;
+
+	const {
+		fish: fishScene,
+		trees,
+		flotsam
+	} = await models;
+
 	water.add(flotsam);
-	scene.add(treesScene);
+	scene.add(trees);
 
-	// LilyPad by Poly by Google, https://poly.google.com/view/0-_GjMekeob
-	const { scene: lilyPadScene } = await new Promise((resolve) =>
-		loader.load("./assets/LilyPad.glb", resolve)
-	);
-	water.add(lilyPadScene);
-
-	const { scene: lilyPad2 } = await new Promise((resolve) =>
-		loader.load("./assets/LilyPad2.glb", resolve)
-	);
-	lilyPad2.position.x += -1;
-	lilyPad2.position.z += 1;
-	water.add(lilyPad2);
-
-	// Fish by RunemarkStudio, https://sketchfab.com/3d-models/koi-fish-8ffded4f28514e439ea0a26d28c1852a
-	const { scene: fishScene } = await new Promise((resolve) =>
-		loader.load("./assets/fish.glb", resolve)
-	);
-
-	const matrix = new Matrix4();
-	class Fishes extends Flow {
+	class Fishes extends InstancedFlow {
 		constructor(count, curveCount) {
-			const fish = new InstancedMesh(
-				fishScene.children[0].geometry,
-				fishScene.children[0].material,
-				count
-			);
-			fish.geometry.scale(0.6, 0.6, 0.6);
-			fish.geometry.rotateZ(Math.PI);
-			fish.geometry.rotateY(-Math.PI / 2);
-			fish.instanceMatrix.setUsage(DynamicDrawUsage);
-			super(fish, curveCount);
-
-			this.offsets = new Array(count).fill(0);
-			this.whichCurve = new Array(count).fill(0);
-			this.count = count;
-		}
-		writeChanges(index) {
-			matrix.makeTranslation(0, this.whichCurve[index], this.offsets[index]);
-			this.object3D.setMatrixAt(index, matrix);
-			this.object3D.instanceMatrix.needsUpdate = true;
-		}
-		moveIndividualAlongCurve(index, offset) {
-			this.offsets[index] += offset;
-			this.writeChanges(index);
-		}
-		setCurve(index, curveNo) {
-			this.whichCurve[index] = curveNo;
-			this.writeChanges(index);
+			fishScene.children[0].geometry.scale(0.6, 0.6, 0.6);
+			fishScene.children[0].geometry.rotateZ(Math.PI);
+			fishScene.children[0].geometry.rotateY(-Math.PI / 2);
+			super(count, curveCount, fishScene.children[0].geometry, fishScene.children[0].material);
 		}
 	}
 	return { Fishes };
 })();
-
-const curves = [
-	[
-		new Vector3(-1, 0.15, 1),
-		new Vector3(-1, 0.15, -1),
-		new Vector3(0, 0.15, 0),
-		new Vector3(1, 0.15, -1),
-		new Vector3(2, 0.15, 2),
-	],
-	[
-		new Vector3(1, 0.15, 4),
-		new Vector3(0, 0.15, 1),
-		new Vector3(-1, 0.15, -2),
-		new Vector3(-2, 0.15, 1),
-		new Vector3(-3, 0.15, 4),
-	],
-];
 
 (async function generatePath() {
 
 	const { Fishes } = await modelsPromise;
 	const fishes = new Fishes(40, curves.length); // 10 fish models, space for 2 curves
 	scene.add(fishes.object3D);
+	window.fishes = fishes;
 
-	for (const curveDesc of curves) {
-		const curve = new CatmullRomCurve3(curveDesc);
+	for (let i = 0; i < curves.length; i++) {
+		const curve = new CatmullRomCurve3(curves[i]);
 		curve.curveType = "centripetal";
 		curve.closed = true;
-		const points = curve.getPoints(50);
-		const line = new LineLoop(
-			new BufferGeometry().setFromPoints(points),
-			new LineBasicMaterial({ color: 0x00ff00 })
-		);
-		scene.add(line);
-		fishes.addToCurve(curve);
+		fishes.updateCurve(i, curve);
 	}
 
 	for (let i = 0; i < fishes.count; i++) {
 		fishes.moveIndividualAlongCurve(i, (i * 1) / fishes.count);
-		fishes.setCurve(i, i % fishes.maxCurves);
+		fishes.setCurve(i, i % curves.length);
 		fishes.object3D.setColorAt(i, new Color(`hsl(${Math.floor(50 * Math.random())}, ${Math.floor(100 * Math.random())}%, ${Math.floor(20 + 80 * Math.random())}%)`));
 	}
 
@@ -236,3 +167,7 @@ const curves = [
 window.renderer = renderer;
 window.camera = camera;
 window.scene = scene;
+
+if (location.search === "?editor") {
+	import("./lib/editor.js");
+}
