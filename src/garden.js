@@ -3,11 +3,12 @@ import "./lib/controllers/controllers.js"; // Adds locomotion
 import { InstancedFlow } from "./lib/flow.js";
 import { curves, lilyPad1, lilyPad2 } from "./lib/positions.js";
 import { models } from "./lib/meshes.js";
-import { playRandomNote } from "./lib/audio.js";
+import { init as audioInit, playRandomNote } from "./lib/audio.js";
 
 window.canaudio.checked = false;
 window.canaudio.addEventListener('change', function () {
 	if (this.checked) {
+		audioInit();
 		window.bgsound.play();
 	} else {
 		window.bgsound.pause();

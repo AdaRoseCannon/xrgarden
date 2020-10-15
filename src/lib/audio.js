@@ -20,33 +20,6 @@ const fileNames = [
 ];
 const notes = new Map();
 
-// Create an AudioContext
-const audioContext = new AudioContext();
-const resonanceAudioScene = new ResonanceAudio(audioContext);
-resonanceAudioScene.output.connect(audioContext.destination);
-
-const tempVector1 = new Vector3();
-const tempVector2 = new Vector3();
-rafCallbacks.add(function () {
-	tempVector1.set(0, 0, -1);
-	tempVector1.applyQuaternion( camera.quaternion );
-	tempVector2.set(0, 1, 0);
-	tempVector2.applyQuaternion( camera.quaternion );
-	resonanceAudioScene.setListenerOrientation(
-		tempVector1.x,
-		tempVector1.y,
-		tempVector1.z,
-		tempVector2.x,
-		tempVector2.y,
-		tempVector2.z
-	);
-	resonanceAudioScene.setListenerPosition(
-		camera.position.x,
-		camera.position.y,
-		camera.position.z,
-	);
-});
-
 class Note {
 	constructor(audioElement, source) {
 		this.audioElement = audioElement;
@@ -59,18 +32,55 @@ class Note {
 	}
 }
 
-for (const filename of fileNames) {
-	const audioElement = document.createElement('audio');
-	audioElement.src = filename;
-	const audioElementSource = audioContext.createMediaElementSource(audioElement);
-	const source = resonanceAudioScene.createSource();
-	audioElementSource.connect(source.input);
+let hasInit = false;
 
-	const note = new Note(audioElement, source);
-	notes.set(filename, note);
+export function init() {
+
+	if (hasInit) return;
+
+	hasInit = true;
+
+	// Create an AudioContext
+	const audioContext = new AudioContext();
+	const resonanceAudioScene = new ResonanceAudio(audioContext);
+	resonanceAudioScene.output.connect(audioContext.destination);
+
+	const tempVector1 = new Vector3();
+	const tempVector2 = new Vector3();
+	rafCallbacks.add(function () {
+		tempVector1.set(0, 0, -1);
+		tempVector1.applyQuaternion( camera.quaternion );
+		tempVector2.set(0, 1, 0);
+		tempVector2.applyQuaternion( camera.quaternion );
+		resonanceAudioScene.setListenerOrientation(
+			tempVector1.x,
+			tempVector1.y,
+			tempVector1.z,
+			tempVector2.x,
+			tempVector2.y,
+			tempVector2.z
+		);
+		resonanceAudioScene.setListenerPosition(
+			camera.position.x,
+			camera.position.y,
+			camera.position.z,
+		);
+	});
+
+	for (const filename of fileNames) {
+		const audioElement = document.createElement('audio');
+		audioElement.src = filename;
+		const audioElementSource = audioContext.createMediaElementSource(audioElement);
+		const source = resonanceAudioScene.createSource();
+		audioElementSource.connect(source.input);
+
+		const note = new Note(audioElement, source);
+		notes.set(filename, note);
+	}
 }
 
 export function playRandomNote(positionRelativeToHead) {
+	if (!hasInit) return;
 	const index = Math.floor(Math.random() * fileNames.length);
 	const note = notes.get(fileNames[index]);
 	note.setLocationAndPlay(positionRelativeToHead);
