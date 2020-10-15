@@ -4,6 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>XR Garden</title>
+		<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
 		<script type="module" src="build/garden.js"></script>
 		<style>
 			html,
@@ -16,10 +17,39 @@
 				padding: 0.2em 0;
 				display: block;
 			}
+			.audio-controls {
+				position: fixed;
+				bottom: 0.5em;
+				right: 0.5em;
+				background: #0004;
+				padding: 0.5em;
+				border-radius: 50%;
+				width: 1em;
+				height: 1em;
+				line-height: 1em;
+				text-align: center;
+				font-size: 3em;
+				color: white;
+			}
+			#canaudio {
+				display: none;
+			}
+			#canaudio + label {
+				margin: 0;
+				padding: 0;
+			}
+			#canaudio + label::before {
+				content: '🔇\FE0E';
+			}
+			#canaudio:checked + label::before {
+				content: '🔊\FE0E';
+			}
 		</style>
 	</head>
 	<body>
 		<canvas></canvas>
+		<audio style="display:none" src="assets/ambient/427400__imjeax__forest-ambient-loop.mp3" loop preload id="bgsound"></audio>
+		<div class="audio-controls"><input type="checkbox" id="canaudio"><label for="canaudio"></label></div>
 		<div style="position: fixed; right: 0; top: 0; background: #fff8;" id="overlay"></div>
 	</body>
 </html>

@@ -167,9 +167,11 @@ function addHandle(point) {
 window.addhandle.addEventListener('click', () => { addHandle() });
 
 window.consolelog.addEventListener('click', function () {
-	console.log(curves.map(curve => curve.points));
-	console.log('const lilypad1Positions = ', lilyPad1Array.map(p => p.position));
-	console.log('const lilypad2Positions = ', lilyPad2Array.map(p => p.position));
+	console.log(`
+		const curveData = JSON.parse("${JSON.stringify(curves.map(curve => curve.points.map(p => [p.x, p.y, p.z].map(n => +n.toFixed(3)))))}");
+	`);
+	console.log('const lilypad1Positions = ', JSON.stringify(lilyPad1Array.map(p => p.position).map(t => [+t.x.toFixed(3),+t.y.toFixed(3),+t.z.toFixed(3)])));
+	console.log('const lilypad2Positions = ', JSON.stringify(lilyPad2Array.map(p => p.position).map(t => [+t.x.toFixed(3),+t.y.toFixed(3),+t.z.toFixed(3)])));
 });
 
 window.curvedeletehandle.addEventListener('click', function () {

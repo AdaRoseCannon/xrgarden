@@ -4,6 +4,7 @@ import { terser } from "rollup-plugin-terser";
 
 export default {
 	input: "src/garden.js",
+	preserveEntrySignatures: 'false',
 	output: {
 		dir: "build/",
 		format: "esm",
@@ -11,7 +12,7 @@ export default {
 		manualChunks: {
 			three: ['three']
 		},
-		preserveEntrySignatures: false
+		chunkFileNames: '[name].js'
 	},
 	plugins: [
 		resolve(),

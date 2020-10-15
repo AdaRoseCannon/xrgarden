@@ -43,6 +43,7 @@ scene.add(cameraGroup);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.maxPolarAngle = Math.PI * 0.5;
+controls.maxDistance = 10;
 camera.position.set(0, 1.6, -5);
 controls.target = new Vector3(0, 1, 0);
 controls.update();
@@ -135,7 +136,11 @@ water.position.y = 0.30;
 scene.add(water);
 
 new WebXRPolyfill();
-document.body.appendChild( VRButton.createButton( renderer ) );
+const vrbutton = VRButton.createButton(renderer);
+document.body.appendChild(vrbutton);
+vrbutton.addEventListener('click', function () {
+	if (!window.canaudio.checked) window.canaudio.click();
+});
 
 const rafCallbacks = new Set();
 

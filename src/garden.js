@@ -2,8 +2,17 @@ import { renderer, scene, camera, rafCallbacks, water } from "./lib/scene.js";
 import { controller1 } from "./lib/controllers/controllers.js";
 import { gamepad } from "./lib/controllers/gamepad.js";
 import { InstancedFlow } from "./lib/flow.js";
-import { curves } from "./lib/positions.js";
+import { curves, lilyPad1, lilyPad2 } from "./lib/positions.js";
 import { models } from "./lib/meshes.js";
+import { playRandomNote } from "./lib/audio.js";
+
+window.canaudio.addEventListener('change', function () {
+	if (this.checked) {
+		window.bgsound.play();
+	} else {
+		window.bgsound.pause();
+	}
+});
 
 import {
 	Mesh,
@@ -16,11 +25,8 @@ import {
 	LineBasicMaterial,
 	LineLoop,
 	CircleGeometry,
-	InstancedMesh,
-	DynamicDrawUsage,
 	Color
 } from "three";
-import { Matrix4 } from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 const stats = new Stats();
 document.body.appendChild( stats.dom );
@@ -65,8 +71,28 @@ const modelsPromise = (async function () {
 	const {
 		fish: fishScene,
 		trees,
-		flotsam
+		flotsam,
+		lilyPad1: lilyPad1Model,
+		lilyPad2: lilyPad2Model
 	} = await models;
+
+	for (const l of lilyPad1) {
+		const newPad = lilyPad1Model.clone();
+		newPad.position.copy(l);
+		newPad.position.y = 0;
+		newPad.rotation.y = Math.PI*2*Math.random();
+		newPad.scale.multiplyScalar(0.8 + 0.4 * Math.random());
+		water.add(newPad);
+	}
+
+	for (const l of lilyPad2) {
+		const newPad = lilyPad2Model.clone();
+		newPad.position.copy(l);
+		newPad.position.y = 0;
+		newPad.rotation.y = Math.PI*2*Math.random();
+		newPad.scale.multiplyScalar(0.8 + 0.4 * Math.random());
+		water.add(newPad);
+	}
 
 	water.add(flotsam);
 	scene.add(trees);
@@ -85,7 +111,12 @@ const modelsPromise = (async function () {
 (async function generatePath() {
 
 	const { Fishes } = await modelsPromise;
-	const fishes = new Fishes(40, curves.length); // 10 fish models, space for 2 curves
+	let totalFishCount = 60;
+	const searchMatch = (window.location.search || "").match(/^\?fish=(\d+)/);
+	if (searchMatch) {
+		totalFishCount = +searchMatch[1];
+	}
+	const fishes = new Fishes(totalFishCount, curves.length); // 10 fish models, space for 2 curves
 	scene.add(fishes.object3D);
 	window.fishes = fishes;
 
@@ -96,9 +127,16 @@ const modelsPromise = (async function () {
 		fishes.updateCurve(i, curve);
 	}
 
+	const totalCurveLength = fishes.curveLengthArray.reduce((a, b) => a + b, 0);
+	const noOfFishPersegment = fishes.curveLengthArray.map(length => Math.round(totalFishCount * length / totalCurveLength));
+	const noOfFish = noOfFishPersegment.slice(0);
+	for (let i=0; i<noOfFish.length; i++) {
+		noOfFish[i]+=(i===0?0:noOfFish[i-1])
+	}
 	for (let i = 0; i < fishes.count; i++) {
-		fishes.moveIndividualAlongCurve(i, (i * 1) / fishes.count);
-		fishes.setCurve(i, i % curves.length);
+		const curveIndex = noOfFish.findIndex(n => i <= n);
+		fishes.setCurve(i, curveIndex);
+		fishes.moveIndividualAlongCurve(i, (i * 1) / noOfFishPersegment[curveIndex]);
 		fishes.object3D.setColorAt(i, new Color(`hsl(${Math.floor(50 * Math.random())}, ${Math.floor(100 * Math.random())}%, ${Math.floor(20 + 80 * Math.random())}%)`));
 	}
 
@@ -117,6 +155,8 @@ const modelsPromise = (async function () {
 	const rainRipples = [];
 	const unsedRainRipples = [];
 	const geometry = new CircleGeometry(1, 32);
+	const dripPos = new Vector3();
+
 	geometry.rotateX(-Math.PI / 2);
 	geometry.vertices.splice(0, 1);
 
@@ -135,6 +175,10 @@ const modelsPromise = (async function () {
 			const ripplesToUse = unsedRainRipples.splice(0, 3);
 			const x = 20 * (Math.random() - 0.5);
 			const z = 20 * (Math.random() - 0.5);
+
+			dripPos.set(x, water.position.y, z);
+			if (window.canaudio.checked) playRandomNote(dripPos);
+
 			for (let ri = 1; ri <= 3; ri++) {
 				const ripple = ripplesToUse[ri - 1];
 				ripple.position.set(x, -0.1, z);
