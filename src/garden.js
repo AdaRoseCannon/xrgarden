@@ -1,9 +1,11 @@
 import { renderer, scene, camera, rafCallbacks, water } from "./lib/scene.js";
+import "./lib/controllers/controllers.js"; // Adds locomotion
 import { InstancedFlow } from "./lib/flow.js";
 import { curves, lilyPad1, lilyPad2 } from "./lib/positions.js";
 import { models } from "./lib/meshes.js";
 import { playRandomNote } from "./lib/audio.js";
 
+window.canaudio.checked = false;
 window.canaudio.addEventListener('change', function () {
 	if (this.checked) {
 		window.bgsound.play();
@@ -21,10 +23,10 @@ import {
 	CircleGeometry,
 	Color
 } from "three";
-
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 const stats = new Stats();
 document.body.appendChild( stats.dom );
+
 
 const modelsPromise = (async function () {
 
