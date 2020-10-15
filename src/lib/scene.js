@@ -79,7 +79,6 @@ const skymaterial = new MeshBasicMaterial({
 	depthWrite: false
 });
 
-// Nice sky with a bit of dithering to reduce banding.
 skymaterial.onBeforeCompile = function (shader) {
 	shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n#define USE_UV');
 	shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
