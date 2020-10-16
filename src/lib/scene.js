@@ -130,7 +130,6 @@ const water = new Mesh(
 	})
 );
 water.geometry.rotateX(-Math.PI / 2);
-water.renderOrder = 10;
 water.position.y = 0.30;
 scene.add(water);
 
