@@ -13,7 +13,8 @@
 				margin: 0;
 				overflow: hidden;
 			}
-			label, button {
+			label,
+			button {
 				padding: 0.2em 0;
 				display: block;
 			}
@@ -39,17 +40,27 @@
 				padding: 0;
 			}
 			#canaudio + label::before {
-				content: '🔇\FE0E';
+				content: "🔇\FE0E";
 			}
 			#canaudio:checked + label::before {
-				content: '🔊\FE0E';
+				content: "🔊\FE0E";
 			}
 		</style>
 	</head>
 	<body>
 		<canvas></canvas>
-		<audio style="display:none" src="assets/ambient/427400__imjeax__forest-ambient-loop.mp3" loop preload id="bgsound"></audio>
-		<div class="audio-controls"><input type="checkbox" id="canaudio"><label for="canaudio"></label></div>
-		<div style="position: fixed; right: 0; top: 0; background: #fff8;" id="overlay"></div>
+		<audio style="display: none" loop preload id="bgsound">
+			<source src="assets/ambient/427400__imjeax__forest-ambient-loop.ogg" type="audio/ogg" />
+			<source src="assets/ambient/427400__imjeax__forest-ambient-loop.mp3" type="audio/mpeg" />
+		</audio>
+		<div class="audio-controls">
+			<input type="checkbox" id="canaudio" /><label
+				for="canaudio"
+			></label>
+		</div>
+		<div
+			style="position: fixed; right: 0; top: 0; background: #fff8"
+			id="overlay"
+		></div>
 	</body>
 </html>
