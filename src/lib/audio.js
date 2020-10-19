@@ -35,9 +35,7 @@ class Note {
 let hasInit = false;
 
 export function init() {
-
 	if (hasInit) return;
-
 	hasInit = true;
 
 	// Create an AudioContext
@@ -45,13 +43,29 @@ export function init() {
 	const resonanceAudioScene = new ResonanceAudio(audioContext);
 	resonanceAudioScene.output.connect(audioContext.destination);
 
+	// Details: https://resonance-audio.github.io/resonance-audio/reference/web/Utils.html#.ROOM_MATERIAL_COEFFICIENTS
+	const roomDimensions = {
+		width: 30,
+		height: 2.5,
+		depth: 30,
+	};
+	const roomMaterials = {
+		left: "transparent",
+		right: "transparent",
+		front: "transparent",
+		back: "transparent",
+		down: "water-or-ice-surface",
+		up: "transparent",
+	};
+	resonanceAudioScene.setRoomProperties(roomDimensions, roomMaterials);
+
 	const tempVector1 = new Vector3();
 	const tempVector2 = new Vector3();
 	rafCallbacks.add(function () {
 		tempVector1.set(0, 0, -1);
-		tempVector1.applyQuaternion( camera.quaternion );
+		tempVector1.applyQuaternion(camera.quaternion);
 		tempVector2.set(0, 1, 0);
-		tempVector2.applyQuaternion( camera.quaternion );
+		tempVector2.applyQuaternion(camera.quaternion);
 		resonanceAudioScene.setListenerOrientation(
 			tempVector1.x,
 			tempVector1.y,
@@ -63,14 +77,16 @@ export function init() {
 		resonanceAudioScene.setListenerPosition(
 			camera.position.x,
 			camera.position.y,
-			camera.position.z,
+			camera.position.z
 		);
 	});
 
 	for (const filename of fileNames) {
-		const audioElement = document.createElement('audio');
+		const audioElement = document.createElement("audio");
 		audioElement.src = filename;
-		const audioElementSource = audioContext.createMediaElementSource(audioElement);
+		const audioElementSource = audioContext.createMediaElementSource(
+			audioElement
+		);
 		const source = resonanceAudioScene.createSource();
 		audioElementSource.connect(source.input);
 
