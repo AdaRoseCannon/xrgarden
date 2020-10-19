@@ -6,15 +6,24 @@
 		<title>XR Koi Garden</title>
 		<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
 		<script type="module" src="build/garden.js"></script>
-		
-		<meta property="og:title" content="XR Koi Garden">
-		<meta name="twitter:card" content="summary_large_image">
-		<meta name="twitter:site" content="@lady_ada_king">
-		<meta name="twitter:creator" content="@lady_ada_king">
-		<meta property="og:url" content="https://ada.is/xrgarden/">
-		<meta name="description" content="A beautiful VR garden with peaceful music. Listen with headphones for the full effect.">
-		<meta property="og:description" content="A beautiful VR garden with peaceful music. Listen with headphones for the full effect.">
-		<meta property="og:image" content="https://ada.is/xrgarden/assets/screenshot.png">
+
+		<meta property="og:title" content="XR Koi Garden" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@lady_ada_king" />
+		<meta name="twitter:creator" content="@lady_ada_king" />
+		<meta property="og:url" content="https://ada.is/xrgarden/" />
+		<meta
+			name="description"
+			content="A beautiful VR garden with peaceful music. Listen with headphones for the full effect."
+		/>
+		<meta
+			property="og:description"
+			content="A beautiful VR garden with peaceful music. Listen with headphones for the full effect."
+		/>
+		<meta
+			property="og:image"
+			content="https://ada.is/xrgarden/assets/screenshot.png"
+		/>
 
 		<style>
 			html,
@@ -28,51 +37,68 @@
 				padding: 0.2em 0;
 				display: block;
 			}
-			.audio-controls {
+			#canaudio {
+				opacity: 0;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 0;
+				height: 0;
+				pointer-events: none;
+			}
+			label[for="canaudio"] {
 				position: fixed;
-				bottom: 0.5em;
-				right: 0.5em;
+				bottom: 1.5rem;
+				right: 1.5rem;
 				background: #0004;
-				padding: 0.5em;
+				padding: 1.5rem;
 				border-radius: 50%;
-				width: 1em;
-				height: 1em;
-				line-height: 1em;
+				border: 2px solid transparent;
+				width: 3rem;
+				height: 3rem;
 				text-align: center;
-				font-size: 3em;
+				font-size: 0;
 				color: white;
 			}
-			#canaudio {
-				display: none;
+			#canaudio:focus + label[for="canaudio"] {
+				border: 2px solid white;
 			}
-			#canaudio + label {
-				margin: 0;
-				padding: 0;
-			}
-			#canaudio + label::before {
+			label[for="canaudio"]::before {
 				content: "🔇\FE0E";
+				font-size: 3rem;
+				line-height: 3rem;
 			}
-			#canaudio:checked + label::before {
+			#canaudio:checked + label[for="canaudio"]::before {
 				content: "🔊\FE0E";
 			}
 		</style>
 	</head>
 	<body>
-		<canvas></canvas>
-		<audio style="display: none" loop preload id="bgsound">
-			<source src="assets/ambient/427400__imjeax__forest-ambient-loop.ogg" type="audio/ogg" />
-			<source src="assets/ambient/427400__imjeax__forest-ambient-loop.mp3" type="audio/mpeg" />
+		<canvas style="position:aboslute;"></canvas>
+		<audio loop preload id="bgsound">
+			<source
+				src="assets/ambient/427400__imjeax__forest-ambient-loop.ogg"
+				type="audio/ogg"
+			/>
+			<source
+				src="assets/ambient/427400__imjeax__forest-ambient-loop.mp3"
+				type="audio/mpeg"
+			/>
 		</audio>
-		<script>window.bgsound.volume=0.5;</script>
-		<div class="audio-controls">
-			<input type="checkbox" id="canaudio" /><label
-				for="canaudio"
-			></label>
-		</div>
+		<script>
+			window.bgsound.volume = 0.5;
+		</script>
+		<input type="checkbox" id="canaudio" />
+		<label for="canaudio">Toggle Audio</label>
 		<div
 			style="position: fixed; right: 0; top: 0; background: #fff8"
 			id="overlay"
 		></div>
-		<img src="https://adalytics-live.glitch.me/counter.png?fallback=XRGarden&color=black" alt="" style="vertical-align: bottom;" aria-hidden="true">
+		<img
+			src="https://adalytics-live.glitch.me/counter.png?fallback=XRGarden&color=black"
+			alt=""
+			style="vertical-align: bottom; position:absolute; top:0;"
+			aria-hidden="true"
+		/>
 	</body>
 </html>
