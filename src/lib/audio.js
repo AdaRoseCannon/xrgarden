@@ -60,19 +60,19 @@ export function init() {
 	resonanceAudioScene.setRoomProperties(roomDimensions, roomMaterials);
 
 	const tempVector1 = new Vector3();
-	const tempVector2 = new Vector3();
+	const tempUpVector = new Vector3();
 	rafCallbacks.add(function () {
 		tempVector1.set(0, 0, -1);
 		tempVector1.applyQuaternion(camera.quaternion);
-		tempVector2.set(0, 1, 0);
-		tempVector2.applyQuaternion(camera.quaternion);
+		tempUpVector.set(0, 1, 0);
+		tempUpVector.applyQuaternion(camera.quaternion);
 		resonanceAudioScene.setListenerOrientation(
 			tempVector1.x,
 			tempVector1.y,
 			tempVector1.z,
-			tempVector2.x,
-			tempVector2.y,
-			tempVector2.z
+			tempUpVector.x,
+			tempUpVector.y,
+			tempUpVector.z
 		);
 		resonanceAudioScene.setListenerPosition(
 			camera.position.x,
