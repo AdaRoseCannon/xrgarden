@@ -22,7 +22,7 @@
     "rollup": "^2.29.0",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-terser": "^7.0.2",
-    "three": "^0.121.1",
+    "three": "^0.137.0",
     "webxr-polyfill": "^2.0.3"
   }
 }
